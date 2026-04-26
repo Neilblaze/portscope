@@ -1,0 +1,259 @@
+import { PROVIDER_DEFAULTS } from "../config/schema.js";
+
+export async function sendMessage(config, apiKey, messages, tools, systemPrompt) {
+  const provider = config.ai.provider;
+
+  switch (provider) {
+    case "anthropic":
+      return sendAnthropic(config, apiKey, messages, tools, systemPrompt);
+    case "openai":
+      return sendOpenAI(
+        config,
+        apiKey,
+        messages,
+        tools,
+        systemPrompt,
+        PROVIDER_DEFAULTS.openai.baseUrl,
+      );
+    case "openrouter":
+      return sendOpenAI(
+        config,
+        apiKey,
+        messages,
+        tools,
+        systemPrompt,
+        PROVIDER_DEFAULTS.openrouter.baseUrl,
+      );
+    case "nvidia":
+      return sendOpenAI(
+        config,
+        apiKey,
+        messages,
+        tools,
+        systemPrompt,
+        PROVIDER_DEFAULTS.nvidia.baseUrl,
+      );
+    default:
+      throw new Error(`Unknown AI provider: ${provider}`);
+  }
+}
+
+
+
+// ── Anthropic ──────────────────────────────────────────────────────────── ///
+
+async function sendAnthropic(config, apiKey, messages, tools, systemPrompt) {
+  const body = {
+    model: config.ai.model,
+    max_tokens: config.ai.maxTokens,
+    system: systemPrompt,
+    messages: toAnthropicMessages(messages),
+    tools: tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    })),
+  };
+
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new Error("Anthropic API timed out after 30s. Check your connection and try again.");
+    }
+    throw err;
+  }
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return parseAnthropicResponse(data);
+}
+
+function toAnthropicMessages(messages) {
+  const result = [];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      if (msg.toolResults) {
+        result.push({
+          role: "user",
+          content: msg.toolResults.map((tr) => ({
+            type: "tool_result",
+            tool_use_id: tr.id,
+            content: JSON.stringify(tr.result),
+          })),
+        });
+      } else {
+        result.push({ role: "user", content: msg.content });
+      }
+    } else if (msg.role === "assistant") {
+      const content = [];
+      if (msg.text) content.push({ type: "text", text: msg.text });
+      if (msg.toolCalls) {
+        for (const tc of msg.toolCalls) {
+          content.push({
+            type: "tool_use",
+            id: tc.id,
+            name: tc.name,
+            input: tc.input,
+          });
+        }
+      }
+      result.push({ role: "assistant", content });
+    }
+  }
+  return result;
+}
+
+function parseAnthropicResponse(data) {
+  const result = { text: "", toolCalls: [] };
+  for (const block of data.content) {
+    if (block.type === "text") result.text += block.text;
+    if (block.type === "tool_use") {
+      result.toolCalls.push({
+        id: block.id,
+        name: block.name,
+        input: block.input,
+      });
+    }
+  }
+  result.stopReason =
+    data.stop_reason === "tool_use" ? "tool_calls" : "stop";
+  return result;
+}
+
+
+
+
+// ── OpenAI / OpenRouter / NVIDIA NIM ───────────────────────────────────────── ///
+
+async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl) {
+  // OpenAI newer models require max_completion_tokens; OpenRouter/NVIDIA use max_tokens
+  const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
+  const body = {
+    model: config.ai.model,
+    [tokenKey]: config.ai.maxTokens,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...toOpenAIMessages(messages),
+    ],
+    tools: tools.map((t) => ({
+      type: "function",
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    })),
+  };
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+
+  if (config.ai.provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
+    headers["X-Title"] = "PortScope";
+  }
+
+  let res;
+  try {
+    res = await fetch(baseUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new Error(
+        `${config.ai.provider} API timed out after 30s. ` +
+        `The model "${config.ai.model}" may be slow — try again, or switch models with /models.`,
+      );
+    }
+    throw err;
+  }
+
+  if (!res.ok) {
+    let err = await res.text();
+    // Strip HTML tags (NVIDIA NIM returns raw HTML on 502)
+    err = err.replace(/<[^>]*>/g, "").trim();
+    if (!err) err = `HTTP ${res.status}`;
+    if (res.status === 502 || res.status === 503) {
+      throw new Error(
+        `${config.ai.provider} is temporarily unavailable (${res.status}). ` +
+        `The model "${config.ai.model}" may be down — try again in a moment, or switch models with /models.`,
+      );
+    }
+    throw new Error(`${config.ai.provider} API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return parseOpenAIResponse(data);
+}
+
+function toOpenAIMessages(messages) {
+  const result = [];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      if (msg.toolResults) {
+        for (const tr of msg.toolResults) {
+          result.push({
+            role: "tool",
+            tool_call_id: tr.id,
+            content: JSON.stringify(tr.result),
+          });
+        }
+      } else {
+        result.push({ role: "user", content: msg.content });
+      }
+    } else if (msg.role === "assistant") {
+      const m = { role: "assistant", content: msg.text || null };
+      if (msg.toolCalls && msg.toolCalls.length > 0) {
+        m.tool_calls = msg.toolCalls.map((tc) => ({
+          id: tc.id,
+          type: "function",
+          function: {
+            name: tc.name,
+            arguments: JSON.stringify(tc.input),
+          },
+        }));
+      }
+      result.push(m);
+    }
+  }
+  return result;
+}
+
+function parseOpenAIResponse(data) {
+  const choice = data.choices[0];
+  const msg = choice.message;
+  const result = { text: msg.content || "", toolCalls: [] };
+  if (msg.tool_calls) {
+    for (const tc of msg.tool_calls) {
+      result.toolCalls.push({
+        id: tc.id,
+        name: tc.function.name,
+        input: JSON.parse(tc.function.arguments),
+      });
+    }
+  }
+  result.stopReason =
+    choice.finish_reason === "tool_calls" ? "tool_calls" : "stop";
+  return result;
+}
+

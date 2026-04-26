@@ -1,0 +1,43 @@
+{
+  "name": "portscope",
+  "version": "1.0.1",
+  "description": "A beautiful CLI tool to see & manage what's running on your ports",
+  "type": "module",
+  "keywords": [
+    "cli",
+    "port",
+    "lsof",
+    "ports",
+    "process",
+    "terminal",
+    "dev-server",
+    "developer-tools",
+    "framework-detection"
+  ],
+  "author": "Pratyay Banerjee",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neilblaze/portscope.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "src/"
+  ],
+  "bin": {
+    "portscope": "./src/index.js",
+    "ports": "./src/index.js",
+    "whoisonport": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
+  },
+  "dependencies": {
+    "chalk": "5.6.2",
+    "cli-table3": "0.6.5",
+    "string-width": "8.2.0"
+  }
+}

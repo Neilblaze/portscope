@@ -1,0 +1,10 @@
+{
+  "ai": {
+    "provider": "anthropic",
+    "model": null,
+    "maxTokens": 4096
+  },
+  "display": {
+    "showBanner": true
+  }
+}
