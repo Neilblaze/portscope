@@ -53,6 +53,12 @@ export function helpCommand() {
   console.log(
     `    ${chalk.cyan("portscope chat")}           AI-powered conversation mode`,
   );
+  console.log(
+    `    ${chalk.cyan("portscope pause <n>")}      Suspend a process (SIGSTOP)`,
+  );
+  console.log(
+    `    ${chalk.cyan("portscope resume <n>")}     Resume a paused process (SIGCONT)`,
+  );
   console.log();
   console.log(chalk.white.bold("  Chat Slash Commands"));
   console.log(chalk.gray("  ─────────────────────────────────────────"));

@@ -8,6 +8,7 @@ import { psCommand } from "./ps.js";
 import { cleanCommand } from "./clean.js";
 import { logsCommand } from "./logs.js";
 import { watchCommand } from "./watch.js";
+import { pauseCommand, resumeCommand } from "./pause.js";
 import { handleSlashCommand, processConversation } from "../ai/conversation.js";
 
 /** Slash commands for tab-completion */
@@ -55,6 +56,8 @@ export async function interactiveMode(showAll) {
   console.log(
     chalk.dim("     ") +
     chalk.cyan("kill <port>") + chalk.dim(" · ") +
+    chalk.cyan("pause <port>") + chalk.dim(" · ") +
+    chalk.cyan("resume <port>") + chalk.dim(" · ") +
     chalk.cyan("ps") + chalk.dim(" · ") +
     chalk.cyan("logs <port>") + chalk.dim(" · ") +
     chalk.cyan("clean") + chalk.dim(" · ") +
@@ -227,6 +230,22 @@ async function handleDirectCommand(input, rl) {
       }
       return true;
 
+    case "pause":
+      try {
+        await pauseCommand(parts);
+      } catch (err) {
+        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+      }
+      return true;
+
+    case "resume":
+      try {
+        await resumeCommand(parts);
+      } catch (err) {
+        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+      }
+      return true;
+
     case "inspect":
       if (parts[1]) {
         try {
@@ -267,6 +286,8 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("<port>")}           Inspect a specific port`);
   console.log(`  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`);
   console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
+  console.log(`  ${chalk.cyan("pause <n>")}        Suspend a process (SIGSTOP)`);
+  console.log(`  ${chalk.cyan("resume <n>")}       Resume a paused process (SIGCONT)`);
   console.log(`  ${chalk.cyan("ps")}               Show running dev processes`);
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);

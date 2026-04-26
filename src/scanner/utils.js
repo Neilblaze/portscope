@@ -115,6 +115,19 @@ export function isDevProcess(processName, command) {
     "mvn",
     "mix",
     "elixir",
+    // MLOps / Inference servers / ML tooling
+    "ollama",
+    "tritonserver",
+    "vllm",
+    "llama-server",
+    "llama-cli",
+    "jupyter",
+    "jupyter-lab",
+    "jupyter-notebook",
+    "tensorboard",
+    "streamlit",
+    "mlflow",
+    "gradio",
   ]);
   if (devNames.has(name)) return true;
 
@@ -143,6 +156,17 @@ export function isDevProcess(processName, command) {
     /\buvicorn\b/,
     /\brails\b/,
     /\bcargo\b/,
+    // MLOps / Inference servers / ML tooling
+    /\bollama\b/,
+    /\bvllm\b/,
+    /\btritonserver\b/,
+    /\bjupyter\b/,
+    /\btensorboard\b/,
+    /\bstreamlit\b/,
+    /\bgradio\b/,
+    /\bmlflow\b/,
+    /\bllama-server\b/,
+    /\bllama-cli\b/,
   ];
   for (const re of cmdIndicators) {
     if (re.test(cmd)) return true;

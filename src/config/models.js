@@ -25,9 +25,14 @@ const CURATED_MODELS = {
  * For Anthropic & OpenAI: returns a curated list.
  * Returns: { models: [{ id, name }], error: string|null }
  */
-export async function fetchAvailableModels(provider, apiKey) {
+export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint) {
   if (CURATED_MODELS[provider]) {
     return { models: CURATED_MODELS[provider], error: null };
+  }
+
+  // Ollama uses /api/tags with a different response shape
+  if (provider === "ollama") {
+    return fetchOllamaModels(ollamaEndpoint);
   }
 
   const defaults = PROVIDER_DEFAULTS[provider];
@@ -79,10 +84,52 @@ export async function fetchAvailableModels(provider, apiKey) {
 }
 
 
+async function fetchOllamaModels(ollamaEndpoint) {
+  const endpoint = ollamaEndpoint || "http://localhost:11434";
+  const tagsUrl = `${endpoint}/api/tags`;
+  try {
+    const res = await fetch(tagsUrl, {
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      return { models: [], error: `Ollama returned ${res.status}` };
+    }
+    const data = await res.json();
+    const models = (data.models || [])
+      .map((m) => ({ id: m.name, name: m.name }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    if (models.length === 0) {
+      return { models: [], error: "No models installed. Run: ollama pull llama3" };
+    }
+    return { models, error: null };
+  } catch (err) {
+    if (err.cause?.code === "ECONNREFUSED" || err.name === "TimeoutError") {
+      return { models: [], error: `Cannot connect to Ollama at ${endpoint}. Is it running?` };
+    }
+    return { models: [], error: `Failed to list Ollama models: ${err.message}` };
+  }
+}
+
+
 // NOTE: Validate an API key (works for a given provider)
 export async function validateApiKey(provider, apiKey) {
   const defaults = PROVIDER_DEFAULTS[provider];
   if (!defaults) return { valid: false, error: "Unknown provider" };
+
+  // Ollama: no key — just check if the server is reachable
+  if (provider === "ollama") {
+    const endpoint = apiKey || "http://localhost:11434";
+    const tagsUrl = `${endpoint}/api/tags`;
+    try {
+      const res = await fetch(tagsUrl, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (res.ok) return { valid: true, error: null };
+      return { valid: false, error: `Ollama returned ${res.status}` };
+    } catch {
+      return { valid: false, error: `Cannot connect to Ollama at ${endpoint}` };
+    }
+  }
 
   try {
     if (provider === "anthropic") {

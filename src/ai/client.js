@@ -33,6 +33,8 @@ export async function sendMessage(config, apiKey, messages, tools, systemPrompt)
         systemPrompt,
         PROVIDER_DEFAULTS.nvidia.baseUrl,
       );
+    case "ollama":
+      return sendOllama(config, messages, systemPrompt);
     default:
       throw new Error(`Unknown AI provider: ${provider}`);
   }
@@ -255,5 +257,64 @@ function parseOpenAIResponse(data) {
   result.stopReason =
     choice.finish_reason === "tool_calls" ? "tool_calls" : "stop";
   return result;
+}
+
+
+
+// ── Ollama (Local) ─────────────────────────────────────────────────────── ///
+
+async function sendOllama(config, messages, systemPrompt) {
+  const endpoint = config.ai.ollamaEndpoint || "http://localhost:11434";
+  const chatUrl = `${endpoint}/api/chat`;
+
+  const ollamaMessages = [
+    { role: "system", content: systemPrompt },
+    ...messages
+      .filter((m) => !m.toolResults)
+      .map((m) => ({
+        role: m.role,
+        content: m.content || m.text || "",
+      })),
+  ];
+
+  const body = {
+    model: config.ai.model,
+    messages: ollamaMessages,
+    stream: false,
+  };
+
+  let res;
+  try {
+    res = await fetch(chatUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(60000),
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new Error(
+        `Ollama timed out after 60s. The model "${config.ai.model}" may be loading — try again in a moment.`,
+      );
+    }
+    if (err.cause?.code === "ECONNREFUSED") {
+      throw new Error(
+        `Cannot connect to Ollama at ${endpoint}. Is it running? Start with: ollama serve`,
+      );
+    }
+    throw err;
+  }
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Ollama error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return {
+    text: data.message?.content || "",
+    toolCalls: [],
+    stopReason: "stop",
+  };
 }
 

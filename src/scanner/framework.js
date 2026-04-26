@@ -15,6 +15,17 @@ export function detectFrameworkFromImage(image) {
   if (img.includes("elasticsearch") || img.includes("opensearch"))
     return "Elasticsearch";
   if (img.includes("minio")) return "MinIO";
+
+
+  // MLOps / Inference servers
+  if (img.includes("vllm")) return "vLLM";
+  if (img.includes("tritonserver") || img.includes("triton")) return "Triton Inference Server";
+  if (img.includes("ollama")) return "Ollama";
+  if (img.includes("jupyter")) return "Jupyter";
+  if (img.includes("tensorboard")) return "TensorBoard";
+  if (img.includes("mlflow")) return "MLflow";
+  if (img.includes("streamlit")) return "Streamlit";
+  if (img.includes("gradio")) return "Gradio";
   return "Docker";
 }
 
@@ -44,7 +55,7 @@ export function detectFramework(projectRoot) {
       if (allDeps["webpack-dev-server"]) return "Webpack";
       if (allDeps["esbuild"]) return "esbuild";
       if (allDeps["parcel"]) return "Parcel";
-    } catch {}
+    } catch { }
   }
 
   if (
@@ -84,6 +95,21 @@ export function detectFrameworkFromCommand(command, processName) {
   if (cmd.includes("rails")) return "Rails";
   if (cmd.includes("cargo") || cmd.includes("rustc")) return "Rust";
 
+
+  // MLOps / Inference servers
+  if (cmd.includes("ollama serve") || cmd.includes("ollama run")) return "Ollama";
+  if (cmd.includes("vllm") || cmd.includes("vllm.entrypoints")) return "vLLM";
+  if (cmd.includes("tritonserver")) return "Triton Inference Server";
+  if (cmd.includes("llama-server") || cmd.includes("llama-cli") || cmd.includes("llama.cpp")) return "llama.cpp";
+  if (cmd.includes("lm-studio") || cmd.includes("lmstudio")) return "LM Studio";
+
+  // ML Tooling
+  if (cmd.includes("jupyter-lab") || cmd.includes("jupyter-notebook") || cmd.includes("jupyter notebook") || cmd.includes("jupyter lab")) return "Jupyter";
+  if (cmd.includes("tensorboard")) return "TensorBoard";
+  if (cmd.includes("gradio")) return "Gradio";
+  if (cmd.includes("streamlit")) return "Streamlit";
+  if (cmd.includes("mlflow")) return "MLflow";
+
   return detectFrameworkFromName(processName);
 }
 
@@ -94,5 +120,17 @@ export function detectFrameworkFromName(processName) {
   if (name === "ruby") return "Ruby";
   if (name === "java") return "Java";
   if (name === "go") return "Go";
+
+  // MLOps processes
+  if (name === "ollama") return "Ollama";
+  if (name === "tritonserver") return "Triton Inference Server";
+  if (name === "jupyter" || name === "jupyter-lab" || name === "jupyter-notebook") return "Jupyter";
+  if (name === "streamlit") return "Streamlit";
+  if (name === "mlflow") return "MLflow";
+  if (name === "tensorboard") return "TensorBoard";
+  if (name === "gradio") return "Gradio";
+  if (name === "llama-server" || name === "llama-cli") return "llama.cpp";
+  if (name === "vllm") return "vLLM";
+  if (name === "lm-studio" || name === "lmstudio") return "LM Studio";
   return null;
 }

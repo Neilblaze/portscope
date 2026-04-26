@@ -9,6 +9,7 @@ import { watchCommand } from "./commands/watch.js";
 import { psCommand } from "./commands/ps.js";
 import { helpCommand } from "./commands/help.js";
 import { chatCommand } from "./commands/chat.js";
+import { pauseCommand, resumeCommand } from "./commands/pause.js";
 import { interactiveMode } from "./commands/interactive.js";
 import chalk from "chalk";
 
@@ -53,6 +54,12 @@ async function main() {
       break;
     case "chat":
       await chatCommand();
+      break;
+    case "pause":
+      await pauseCommand(filteredArgs);
+      break;
+    case "resume":
+      await resumeCommand(filteredArgs);
       break;
     case "help":
     case "--help":

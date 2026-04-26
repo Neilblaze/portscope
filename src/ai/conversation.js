@@ -155,6 +155,8 @@ function printSlashHelp() {
   console.log(`  ${chalk.cyan("<port>")}           Inspect a specific port`);
   console.log(`  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`);
   console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
+  console.log(`  ${chalk.cyan("pause <n>")}        Suspend a process (SIGSTOP)`);
+  console.log(`  ${chalk.cyan("resume <n>")}       Resume a paused process (SIGCONT)`);
   console.log(`  ${chalk.cyan("ps")}               Show running dev processes`);
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);
@@ -215,16 +217,21 @@ async function switchProvider(state, rl) {
   for (let i = 0; i < PROVIDER_IDS.length; i++) {
     const id = PROVIDER_IDS[i];
     const defaults = PROVIDER_DEFAULTS[id];
-    const hasKey = !!getApiKeyForProvider(id);
     const isCurrent = id === state.config.ai.provider;
     const marker = isCurrent ? chalk.cyan(" ◀ current") : "";
-    const keyStatus = hasKey ? chalk.green(" ✓") : chalk.dim(" ○");
+    let keyStatus;
+    if (id === "ollama") {
+      keyStatus = chalk.dim(" (local)");
+    } else {
+      const hasKey = !!getApiKeyForProvider(id);
+      keyStatus = hasKey ? chalk.green(" ✓") : chalk.dim(" ○");
+    }
     console.log(`  ${chalk.white.bold(i + 1)}  ${chalk.white(defaults.label)}${keyStatus}${marker}`);
   }
-  console.log(`  ${chalk.dim("0")}  ${chalk.dim("Cancel")}`);
+  console.log(`  ${chalk.dim("0")}  ${chalk.dim("Exit")}`);
   console.log();
 
-  const answer = await question(rl, chalk.yellow("  Pick a provider (0-4): "));
+  const answer = await question(rl, chalk.yellow(`  Pick a provider (0-${PROVIDER_IDS.length}): `));
   const idx = parseInt(answer, 10);
   if (isNaN(idx) || idx < 1 || idx > PROVIDER_IDS.length) {
     if (idx !== 0) console.log(chalk.gray("  Cancelled.\n"));
@@ -236,7 +243,46 @@ async function switchProvider(state, rl) {
   const defaults = PROVIDER_DEFAULTS[provider];
   let apiKey = getApiKeyForProvider(provider);
 
-  if (!apiKey) {
+  if (provider === "ollama") {
+    const defaultEndpoint = "http://localhost:11434";
+    const currentEndpoint = state.config.ai.ollamaEndpoint || defaultEndpoint;
+    console.log();
+    console.log(chalk.gray(`  Default Ollama endpoint: ${chalk.white(currentEndpoint)}`));
+    const useCustom = await question(rl, chalk.yellow("  Use a custom endpoint? [y/N] "));
+
+    let endpoint = currentEndpoint;
+    if (useCustom.trim().toLowerCase() === "y") {
+      const custom = await question(rl, chalk.yellow("  Enter Ollama endpoint (e.g. http://192.168.1.10:11434): "));
+      if (custom.trim()) {
+        endpoint = custom.trim().replace(/\/+$/, "");
+      }
+    }
+
+    // Validate reachability at the chosen endpoint
+    const tagsUrl = `${endpoint}/api/tags`;
+    process.stdout.write(chalk.gray(`  Checking ${endpoint}...`));
+    try {
+      const res = await fetch(tagsUrl, { signal: AbortSignal.timeout(5000) });
+      process.stdout.write("\r" + " ".repeat(60) + "\r");
+      if (!res.ok) {
+        console.log(chalk.red(`  ✕ Ollama at ${endpoint} returned ${res.status}`));
+        return;
+      }
+    } catch (err) {
+      process.stdout.write("\r" + " ".repeat(60) + "\r");
+      if (err.cause?.code === "ECONNREFUSED" || err.name === "TimeoutError") {
+        console.log(chalk.red(`  ✕ Cannot connect to Ollama at ${endpoint}`));
+      } else {
+        console.log(chalk.red(`  ✕ ${err.message}`));
+      }
+      console.log(chalk.gray("  Make sure Ollama is running: ollama serve\n"));
+      return;
+    }
+
+    console.log(chalk.green(`  ✓ Ollama is running at ${endpoint}`));
+    state.config.ai.ollamaEndpoint = endpoint;
+    apiKey = "local";
+  } else if (!apiKey) {
     console.log();
     console.log(chalk.yellow(`  No API key found for ${defaults.label}.`));
     console.log(chalk.gray(`  Env variable: ${defaults.envKey}`));
@@ -269,7 +315,7 @@ async function switchProvider(state, rl) {
   state.config.ai.model = defaults.model;
   state.apiKey = apiKey;
   resetConfig();
-  persistProviderChoice(provider, defaults.model);
+  persistProviderChoice(provider, defaults.model, provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
 
   console.log(
     chalk.green(`  ✓ Switched to ${chalk.bold(defaults.label)}`) +
@@ -300,7 +346,11 @@ async function browseModels(state, rl) {
   }
 
   process.stdout.write(chalk.gray("\n  Fetching models..."));
-  const { models, error } = await fetchAvailableModels(provider, apiKey);
+  const { models, error } = await fetchAvailableModels(
+    provider,
+    apiKey,
+    provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined
+  );
   process.stdout.write("\r" + " ".repeat(40) + "\r");
 
   if (error) {

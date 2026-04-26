@@ -36,13 +36,14 @@ export async function loadConfig() {
     }
   }
 
-  // Load persisted provider/model from ~/.portscope/config.json
+  // Load persisted provider/model
   const persistedPath = join(PORTSCOPE_HOME, "config.json");
   if (existsSync(persistedPath)) {
     try {
       const persisted = JSON.parse(readFileSync(persistedPath, "utf8"));
       if (persisted.provider) config.ai.provider = persisted.provider;
       if (persisted.model) config.ai.model = persisted.model;
+      if (persisted.ollamaEndpoint) config.ai.ollamaEndpoint = persisted.ollamaEndpoint;
     } catch { }
   }
 
@@ -71,13 +72,16 @@ export function resetConfig() {
  * and switches the config to that provider automatically.
  */
 export function getApiKey(config) {
+  if (config.ai.provider === "ollama") return "local";
+
   const providerDefaults = PROVIDER_DEFAULTS[config.ai.provider];
-  if (providerDefaults) {
+  if (providerDefaults && providerDefaults.envKey) {
     const key = process.env[providerDefaults.envKey];
     if (key) return key;
   }
   // Fallback: scan all providers for any available key
   for (const [id, defaults] of Object.entries(PROVIDER_DEFAULTS)) {
+    if (!defaults.envKey) continue;
     const key = process.env[defaults.envKey];
     if (key) {
       // Auto-switch to this provider
@@ -92,8 +96,9 @@ export function getApiKey(config) {
 
 // Get the API key for a specific provider (may differ from configured one)
 export function getApiKeyForProvider(provider) {
+  if (provider === "ollama") return null;
   const providerDefaults = PROVIDER_DEFAULTS[provider];
-  if (!providerDefaults) return null;
+  if (!providerDefaults || !providerDefaults.envKey) return null;
   return process.env[providerDefaults.envKey] || null;
 }
 
@@ -104,7 +109,7 @@ export function getApiKeyForProvider(provider) {
  */
 export function saveApiKey(provider, key) {
   const providerDefaults = PROVIDER_DEFAULTS[provider];
-  if (!providerDefaults) return;
+  if (!providerDefaults || !providerDefaults.envKey) return;
 
   const envKey = providerDefaults.envKey;
 
@@ -142,7 +147,7 @@ export function saveApiKey(provider, key) {
  * Persist the provider and model choice to ~/.portscope/config.json.
  * Called automatically when saving keys and when switching providers.
  */
-export function persistProviderChoice(provider, model) {
+export function persistProviderChoice(provider, model, ollamaEndpoint) {
   if (!existsSync(PORTSCOPE_HOME)) {
     mkdirSync(PORTSCOPE_HOME, { recursive: true });
   }
@@ -155,6 +160,7 @@ export function persistProviderChoice(provider, model) {
   }
   existing.provider = provider;
   if (model) existing.model = model;
+  if (ollamaEndpoint !== undefined) existing.ollamaEndpoint = ollamaEndpoint;
   writeFileSync(configPath, JSON.stringify(existing, null, 2) + "\n", "utf8");
 }
 

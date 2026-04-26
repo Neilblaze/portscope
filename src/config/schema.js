@@ -39,8 +39,15 @@ export const PROVIDER_DEFAULTS = {
     modelsUrl: "https://integrate.api.nvidia.com/v1/models",
     label: "NVIDIA NIM",
   },
+  ollama: {
+    model: "llama3",
+    envKey: null,
+    baseUrl: "http://localhost:11434/api/chat",
+    modelsUrl: "http://localhost:11434/api/tags",
+    label: "Ollama (Local)",
+  },
 };
 
 
-export const PROVIDER_IDS = ["anthropic", "openai", "openrouter", "nvidia"];
+export const PROVIDER_IDS = ["anthropic", "openai", "openrouter", "nvidia", "ollama"];
 

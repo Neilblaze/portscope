@@ -32,7 +32,7 @@ $ portscope
   ██╔═══╝ ██║   ██║██╔══██╗   ██║   ╚════██║██║     ██║   ██║██╔═══╝ ██╔══╝
   ██║     ╚██████╔╝██║  ██║   ██║   ███████║╚██████╗╚██████╔╝██║     ███████╗
   ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═════╝╚═╝     ╚══════╝
-  🔊 listening to your ports                                          v1.0.0
+  🔊 listening to your ports                                          v1.1.0
 
 ╭───────┬─────────┬───────┬──────────────────────┬────────────┬────────┬───────────╮
 │ PORT  │ PROCESS │ PID   │ PROJECT              │ FRAMEWORK  │ UPTIME │ STATUS    │
@@ -141,6 +141,18 @@ $ portscope kill 3000-3005
   Range summary: 2 killed, 4 empty
 ```
 
+### Pause / Resume a process
+
+```bash
+portscope pause 3000              # suspend (SIGSTOP) — frees CPU, keeps state
+portscope resume 3000             # resume (SIGCONT)
+```
+
+Useful for temporarily freeing resources — e.g., pausing a 10 GB inference server to run a Docker build, then resuming it.
+
+> [!NOTE]
+> Pause/resume uses POSIX `SIGSTOP`/`SIGCONT` and is available on macOS and Linux. Not supported on Windows.
+
 ### View process logs
 
 ```bash
@@ -215,10 +227,16 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 | **OpenAI** | `gpt-5-nano` | curated list | `OPENAI_API_KEY` |
 | **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✓ live browse | `OPENROUTER_API_KEY` |
 | **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✓ live browse | `NVIDIA_API_KEY` |
+| **Ollama (Local)** | `llama3` | ✓ local list | *none — runs locally* |
 
 ### Setup
 
 Type `/provider` in the interactive prompt — pick a provider, paste your API key, and you're ready. Keys are validated and saved to `~/.portscope/.env`, and your provider/model choice persists in `~/.portscope/config.json` — no re-configuration needed on restart.
+
+For **Ollama**, no API key is needed — PortScope auto-detects the local server at `localhost:11434`, or you can set your custom endpoint on your own. Just select Ollama via `/provider` and start chatting.
+
+> [!NOTE]
+> Ollama provides cost-free, local AI chat using locally running models. Tool-calling (kill, inspect via AI) is not supported — use Ollama for conversational Q&A and cloud providers for full AI orchestration.
 
 ### Slash Commands
 
@@ -292,16 +310,15 @@ Framework detection reads `package.json` dependencies and inspects process comma
 
 ## Framework Detection
 
-PortScope automatically detects 30+ frameworks by analyzing process commands, port conventions, and project files. For more context refer below.
+PortScope automatically detects 40+ frameworks by analyzing process commands, port conventions, and project files. For more context refer below.
 
 <details>
 <summary>Supported frameworks <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary>
 
-🟧 **JavaScript**: Next.js, Vite, React, Vue, Angular, Svelte, SvelteKit, Remix, Astro, Gatsby, Nuxt, Express, Fastify, NestJS, Hono, Koa
-
-🟩 **Python**: Django, Flask, FastAPI
-
-🟪 **Other**: Rails, Go, Rust, Java, Docker, PostgreSQL, Redis, MySQL, MongoDB, nginx, LocalStack, RabbitMQ, Kafka, Elasticsearch, MinIO, Webpack, esbuild, Parcel
+- **JavaScript**: Next.js, Vite, React, Vue, Angular, Svelte, SvelteKit, Remix, Astro, Gatsby, Nuxt, Express, Fastify, NestJS, Hono, Koa
+- **Python**: Django, Flask, FastAPI
+- **Other**: Rails, Go, Rust, Java, Docker, PostgreSQL, Redis, MySQL, MongoDB, nginx, LocalStack, RabbitMQ, Kafka, Elasticsearch, MinIO, Webpack, esbuild, Parcel
+- **MLOps / AI**: vLLM, Triton Inference Server, Ollama, llama.cpp, LM Studio, Jupyter, TensorBoard, Gradio, Streamlit, MLflow
 
 </details>
 
@@ -337,6 +354,7 @@ graph TD
     H --> H3[executor.js]
     H --> H4[tools.js]
     H2 --> I[Anthropic / OpenAI / OpenRouter / NVIDIA NIM]
+    H2 --> I2[Ollama Local]
 
     A --> J[Config Layer]
     J --> J1[loader.js]
@@ -357,12 +375,13 @@ graph TD
 git clone https://github.com/neilblaze/portscope.git
 cd portscope
 npm install
+npm test                   # Run tests
 npm start                  # Run locally (interactive mode)
 npm run dev                # Same as npm start
 node src/index.js --help   # See all commands
 ```
 
-## Contributing
+## Contributing 🤗
 
 Got an idea to make PortScope better? Whether you want to add support for a new framework, optimize the port scanner, or just fix a typo, we'd love to see your pull requests!
 
@@ -371,6 +390,6 @@ Got an idea to make PortScope better? Whether you want to add support for a new 
 
 ---
 
-## License
+## License 📜
 
 [Apache-2.0](LICENSE)
