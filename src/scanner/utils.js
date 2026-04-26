@@ -128,6 +128,8 @@ export function isDevProcess(processName, command) {
     "streamlit",
     "mlflow",
     "gradio",
+    "nc",
+    "netcat",
   ]);
   if (devNames.has(name)) return true;
 

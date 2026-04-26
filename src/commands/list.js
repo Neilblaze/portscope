@@ -2,10 +2,10 @@ import { getListeningPorts } from "../scanner/ports.js";
 import { isDevProcess } from "../scanner/utils.js";
 import { displayPortTable } from "../ui/tables.js";
 
-export async function listCommand(showAll) {
+export async function listCommand(showAll, showBanner = true) {
   let ports = await getListeningPorts();
   if (!showAll) {
     ports = ports.filter((p) => isDevProcess(p.processName, p.command));
   }
-  displayPortTable(ports, !showAll);
+  displayPortTable(ports, !showAll, showBanner);
 }

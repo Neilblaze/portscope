@@ -49,14 +49,23 @@ export async function executeTool(toolName, input, rl) {
     }
 
     case "kill_process": {
-      const resolved = await resolveKillTarget(input.target);
-      if (!resolved)
-        return { error: `No process found for ${input.target}` };
+      const results = {};
+      const targets = input.targets || (input.target !== undefined ? [input.target] : []);
+      if (targets.length === 0) return { error: "No targets provided" };
+      
       const signal = input.force ? "SIGKILL" : "SIGTERM";
-      const ok = killProcess(resolved.pid, signal);
-      return ok
-        ? { success: true, pid: resolved.pid, signal }
-        : { success: false, error: `Failed to kill PID ${resolved.pid}` };
+      for (const t of targets) {
+        const resolved = await resolveKillTarget(t);
+        if (!resolved) {
+          results[t] = { error: `No process found for ${t}` };
+          continue;
+        }
+        const ok = killProcess(resolved.pid, signal);
+        results[t] = ok
+          ? { success: true, pid: resolved.pid, signal }
+          : { success: false, error: `Failed to kill PID ${resolved.pid}` };
+      }
+      return results;
     }
 
     case "list_processes": {

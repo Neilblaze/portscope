@@ -32,7 +32,7 @@ const SLASH_COMMANDS = [
 export async function interactiveMode(showAll) {
   console.clear();
 
-  await listCommand(showAll);
+  await listCommand(showAll, true);
 
   const config = await loadConfig();
   const apiKey = getApiKey(config);
@@ -59,12 +59,15 @@ export async function interactiveMode(showAll) {
     chalk.cyan("pause <port>") + chalk.dim(" · ") +
     chalk.cyan("resume <port>") + chalk.dim(" · ") +
     chalk.cyan("ps") + chalk.dim(" · ") +
-    chalk.cyan("logs <port>") + chalk.dim(" · ") +
+    chalk.cyan("logs <port>")
+  );
+  console.log(
+    chalk.dim("     ") +
     chalk.cyan("clean") + chalk.dim(" · ") +
     chalk.cyan("watch") + chalk.dim(" · ") +
     chalk.cyan("<port>") + chalk.dim(" (inspect) · ") +
     chalk.cyan("help") + chalk.dim(" · ") +
-    chalk.cyan("exit"),
+    chalk.cyan("exit")
   );
   console.log();
 
@@ -191,6 +194,9 @@ async function handleDirectCommand(input, rl) {
 
   switch (cmd) {
     case "kill":
+      if (parts.length > 1 && !/^\d+(-\d+)?$/.test(parts[1]) && parts[1] !== "all") {
+        return false;
+      }
       try {
         await killCommand(parts, rl);
       } catch (err) {
@@ -199,8 +205,9 @@ async function handleDirectCommand(input, rl) {
       return true;
 
     case "ps":
+      if (parts.length > 2 || (parts[1] && !["--all", "-a"].includes(parts[1]))) return false;
       try {
-        await psCommand(parts.includes("--all") || parts.includes("-a"));
+        await psCommand(parts.includes("--all") || parts.includes("-a"), false);
       } catch (err) {
         console.log(chalk.red(`\n  Error: ${err.message}\n`));
       }
@@ -260,8 +267,11 @@ async function handleDirectCommand(input, rl) {
 
     case "list":
     case "ports":
+      if (parts.length > 2 || (parts[1] && !["--all", "-a", "ports"].includes(parts[1]))) {
+        return false;
+      }
       try {
-        await listCommand(parts.includes("--all") || parts.includes("-a"));
+        await listCommand(parts.includes("--all") || parts.includes("-a"), false);
       } catch (err) {
         console.log(chalk.red(`\n  Error: ${err.message}\n`));
       }

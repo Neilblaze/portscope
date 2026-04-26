@@ -29,20 +29,21 @@ export const TOOLS = [
   {
     name: "kill_process",
     description:
-      "Kill a process by port number or PID. This is a destructive operation and requires user confirmation.",
+      "Kill one or more processes by port numbers or PIDs. This is a destructive operation and requires user confirmation.",
     parameters: {
       type: "object",
       properties: {
-        target: {
-          type: "number",
-          description: "Port number or PID to kill.",
+        targets: {
+          type: "array",
+          items: { type: "number" },
+          description: "List of Port numbers or PIDs to kill.",
         },
         force: {
           type: "boolean",
           description: "Use SIGKILL instead of SIGTERM.",
         },
       },
-      required: ["target"],
+      required: ["targets"],
     },
   },
   {

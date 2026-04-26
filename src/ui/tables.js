@@ -29,8 +29,8 @@ const TABLE_STYLE = {
 };
 
 
-export function displayPortTable(ports, filtered = false) {
-  renderBanner();
+export function displayPortTable(ports, filtered = false, showBanner = true) {
+  if (showBanner) renderBanner();
 
   if (ports.length === 0) {
     console.log(chalk.gray("  No active listening ports found.\n"));
@@ -90,8 +90,8 @@ export function displayPortTable(ports, filtered = false) {
 }
 
 
-export function displayProcessTable(processes, filtered = false) {
-  renderBanner();
+export function displayProcessTable(processes, filtered = false, showBanner = true) {
+  if (showBanner) renderBanner();
 
   if (processes.length === 0) {
     console.log(chalk.gray("  No dev processes found.\n"));

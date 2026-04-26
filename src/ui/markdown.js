@@ -166,5 +166,5 @@ function renderTable(rows) {
     table.push(row.map((cell) => renderInline(cell)));
   }
 
-  return table.toString();
+  return table.toString().split("\n").map((line) => "  " + line).join("\n");
 }

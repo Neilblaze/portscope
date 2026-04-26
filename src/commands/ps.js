@@ -3,7 +3,7 @@ import { isDevProcess } from "../scanner/utils.js";
 import { displayProcessTable } from "../ui/tables.js";
 
 
-export async function psCommand(showAll) {
+export async function psCommand(showAll, showBanner = true) {
   let processes = await getAllProcesses();
   if (!showAll) {
     processes = processes.filter((p) =>
@@ -55,6 +55,6 @@ export async function psCommand(showAll) {
     processes = nonDocker;
   }
   processes.sort((a, b) => b.cpu - a.cpu);
-  displayProcessTable(processes, !showAll);
+  displayProcessTable(processes, !showAll, showBanner);
 }
 
