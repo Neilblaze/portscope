@@ -1,0 +1,32 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: npm ci
+
+      - run: node src/index.js --help
+
+      - run: node --check src/index.js
+      - run: node --check src/config/schema.js
+      - run: node --check src/config/loader.js
+      - run: node --check src/config/models.js
+      - run: node --check src/ai/client.js
+      - run: node --check src/ai/conversation.js
+      - run: node --check src/ai/executor.js
+      - run: node --check src/ai/tools.js

@@ -1,0 +1,63 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting a bug. Please fill out the fields below.
+
+  - type: input
+    id: version
+    attributes:
+      label: PortScope Version
+      description: "Run `portscope --help` to check"
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - macOS
+        - Linux
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node_version
+    attributes:
+      label: Node.js Version
+      description: "Run `node --version`"
+      placeholder: "v20.x.x"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear description of what happened vs. what you expected.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run `portscope ...`
+        2. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Output / Logs
+      description: Paste any error messages or terminal output.
+      render: shell
