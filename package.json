@@ -1,5 +1,5 @@
 {
-  "name": "portscope",
+  "name": "@neilblaze/portscope",
   "version": "1.1.0",
   "description": "A beautiful CLI tool to see & manage what's running on your ports",
   "type": "module",
@@ -19,6 +19,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Neilblaze/portscope.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "engines": {
     "node": ">=18"
