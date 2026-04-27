@@ -11,6 +11,7 @@ import {
 import { isDevProcess } from "../scanner/utils.js";
 import { getProcessLogFiles } from "../scanner/logs.js";
 import { DESTRUCTIVE_TOOLS } from "./tools.js";
+import { sanitizePath } from "../scanner/sanitize.js";
 
 
 
@@ -124,7 +125,8 @@ export async function executeTool(toolName, input, rl) {
       try {
         const numLines = input.lines || 20;
         const file = logFiles[0];
-        const content = execSync(`tail -n ${numLines} "${file.path}"`, {
+        const safePath = sanitizePath(file.path);
+        const content = execSync(`tail -n ${numLines} "${safePath}"`, {
           encoding: "utf8",
           timeout: 5000,
         });

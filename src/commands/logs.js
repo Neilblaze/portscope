@@ -97,11 +97,12 @@ export async function logsCommand(filteredArgs) {
       );
       const tail = spawnTail(stderrFile.path, lines, follow);
       if (follow) {
-        process.on("SIGINT", () => {
-          tail.kill();
-          process.exit(0);
+        await new Promise((resolve) => {
+          process.on("SIGINT", () => {
+            tail.kill("SIGTERM");
+            resolve();
+          });
         });
-        await new Promise(() => { });
       } else {
         await new Promise((resolve) => tail.on("close", resolve));
       }
@@ -127,11 +128,12 @@ export async function logsCommand(filteredArgs) {
       );
       const tail = spawnTail(f.path, lines, follow);
       if (follow) {
-        process.on("SIGINT", () => {
-          tail.kill();
-          process.exit(0);
+        await new Promise((resolve) => {
+          process.on("SIGINT", () => {
+            tail.kill("SIGTERM");
+            resolve();
+          });
         });
-        await new Promise(() => { });
       } else {
         await new Promise((resolve) => tail.on("close", resolve));
       }
@@ -176,11 +178,12 @@ export async function logsCommand(filteredArgs) {
     );
     const tail = spawnTail(selected.path, lines, follow);
     if (follow) {
-      process.on("SIGINT", () => {
-        tail.kill();
-        process.exit(0);
+      await new Promise((resolve) => {
+        process.on("SIGINT", () => {
+          tail.kill("SIGTERM");
+          resolve();
+        });
       });
-      await new Promise(() => { });
     } else {
       await new Promise((resolve) => tail.on("close", resolve));
     }
@@ -198,11 +201,12 @@ export async function logsCommand(filteredArgs) {
     const [cmd, ...sysArgs] = sysCmd.split(" ");
     const proc = spawn(cmd, sysArgs, { stdio: "inherit" });
     if (follow) {
-      process.on("SIGINT", () => {
-        proc.kill();
-        process.exit(0);
+      await new Promise((resolve) => {
+        process.on("SIGINT", () => {
+          proc.kill("SIGTERM");
+          resolve();
+        });
       });
-      await new Promise(() => { });
     } else {
       await new Promise((resolve) => proc.on("close", resolve));
     }

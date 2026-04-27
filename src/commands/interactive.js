@@ -10,14 +10,19 @@ import { logsCommand } from "./logs.js";
 import { watchCommand } from "./watch.js";
 import { pauseCommand, resumeCommand } from "./pause.js";
 import { handleSlashCommand, processConversation } from "../ai/conversation.js";
-
+import { saveConversation } from "../ai/history.js";
+import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
 /** Slash commands for tab-completion */
 const SLASH_COMMANDS = [
   { name: "/provider", desc: "Switch AI provider" },
   { name: "/models", desc: "Browse models" },
   { name: "/model", desc: "Set model" },
   { name: "/status", desc: "Current config" },
+  { name: "/usage", desc: "Token usage & cost" },
   { name: "/clear", desc: "Reset chat" },
+  { name: "/history", desc: "Previous conversations" },
+  { name: "/load", desc: "Restore conversation" },
+  { name: "/export", desc: "Export conversation" },
   { name: "/help", desc: "All commands" },
   { name: "/exit", desc: "Quit" },
 ];
@@ -138,9 +143,32 @@ export async function interactiveMode(showAll) {
         return;
       }
 
-      messages.push({ role: "user", content: trimmed });
+      const { text, images, errors } = extractImages(trimmed);
+      for (const err of errors) {
+        console.log(chalk.yellow(`  ⚠ ${err}`));
+      }
+
+      if (images.length > 0 && state.config.ai.provider === "ollama") {
+        console.log(chalk.yellow(`  ⚠ Ollama vision not currently supported. Images ignored.\n`));
+        images.length = 0;
+      }
+
+      if (images.length > 0) {
+        const provider = state.config.ai.provider;
+        let content;
+        if (provider === "anthropic") {
+          content = toAnthropicImageContent(text, images);
+        } else {
+          content = toOpenAIImageContent(text, images);
+        }
+        messages.push({ role: "user", content, _text: text });
+      } else {
+        messages.push({ role: "user", content: text });
+      }
+
       try {
         await processConversation(state.config, state.apiKey, messages, rl);
+        saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
         console.log(chalk.red(`\n  Error: ${err.message}\n`));
       }
@@ -310,9 +338,18 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("/models")}          Browse and select a model`);
   console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
   console.log(`  ${chalk.cyan("/status")}          Show current provider & model`);
+  console.log(`  ${chalk.cyan("/usage")}           Show token usage & estimated cost`);
   console.log(`  ${chalk.cyan("/clear")}           Reset conversation history`);
   console.log();
+  console.log(chalk.cyan.bold("  History & Export"));
+  console.log(chalk.gray("  ─────────────────────────────────────────"));
+  console.log(`  ${chalk.cyan("/history")}         List previous conversations`);
+  console.log(`  ${chalk.cyan("/history <n>")}     Preview a conversation`);
+  console.log(`  ${chalk.cyan("/load <n>")}        Restore a previous conversation`);
+  console.log(`  ${chalk.cyan("/export [fmt]")}    Export as md, html, or txt`);
+  console.log();
   console.log(chalk.dim("  Or just type naturally — e.g. \"show me what's using the most CPU\""));
+  console.log(chalk.dim("  Attach images: include a path like ~/screenshot.png in your query"));
   console.log(chalk.dim("  Type exit to quit · Tab-complete slash commands with /"));
   console.log();
 }

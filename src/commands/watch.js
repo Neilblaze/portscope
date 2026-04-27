@@ -8,9 +8,11 @@ export async function watchCommand() {
     displayWatchEvent(type, info);
   }, 2000);
 
-  process.on("SIGINT", () => {
-    clearInterval(interval);
-    console.log(chalk.gray("\n\n  Stopped watching.\n"));
-    process.exit(0);
+  await new Promise((resolve) => {
+    process.on("SIGINT", () => {
+      clearInterval(interval);
+      console.log(chalk.gray("\n\n  Stopped watching.\n"));
+      resolve();
+    });
   });
 }

@@ -1,42 +1,35 @@
 import { PROVIDER_DEFAULTS } from "../config/schema.js";
 
 export async function sendMessage(config, apiKey, messages, tools, systemPrompt) {
-  const provider = config.ai.provider;
+  let attempt = 0;
+  const maxAttempts = 2;
 
-  switch (provider) {
-    case "anthropic":
-      return sendAnthropic(config, apiKey, messages, tools, systemPrompt);
-    case "openai":
-      return sendOpenAI(
-        config,
-        apiKey,
-        messages,
-        tools,
-        systemPrompt,
-        PROVIDER_DEFAULTS.openai.baseUrl,
-      );
-    case "openrouter":
-      return sendOpenAI(
-        config,
-        apiKey,
-        messages,
-        tools,
-        systemPrompt,
-        PROVIDER_DEFAULTS.openrouter.baseUrl,
-      );
-    case "nvidia":
-      return sendOpenAI(
-        config,
-        apiKey,
-        messages,
-        tools,
-        systemPrompt,
-        PROVIDER_DEFAULTS.nvidia.baseUrl,
-      );
-    case "ollama":
-      return sendOllama(config, messages, systemPrompt);
-    default:
-      throw new Error(`Unknown AI provider: ${provider}`);
+  while (attempt < maxAttempts) {
+    try {
+      const provider = config.ai.provider;
+      switch (provider) {
+        case "anthropic":
+          return await sendAnthropic(config, apiKey, messages, tools, systemPrompt);
+        case "openai":
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl);
+        case "openrouter":
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl);
+        case "nvidia":
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl);
+        case "ollama":
+          return await sendOllama(config, messages, systemPrompt);
+        default:
+          throw new Error(`Unknown AI provider: ${provider}`);
+      }
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxAttempts) throw err;
+      // NOTE: Do not retry on authentication errors
+      if (err.message.includes("401") || err.message.includes("403") || err.message.toLowerCase().includes("key")) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+    }
   }
 }
 
@@ -121,7 +114,7 @@ function toAnthropicMessages(messages) {
 }
 
 function parseAnthropicResponse(data) {
-  const result = { text: "", toolCalls: [] };
+  const result = { text: "", toolCalls: [], usage: null };
   for (const block of data.content) {
     if (block.type === "text") result.text += block.text;
     if (block.type === "tool_use") {
@@ -134,6 +127,12 @@ function parseAnthropicResponse(data) {
   }
   result.stopReason =
     data.stop_reason === "tool_use" ? "tool_calls" : "stop";
+  if (data.usage) {
+    result.usage = {
+      inputTokens: data.usage.input_tokens || 0,
+      outputTokens: data.usage.output_tokens || 0,
+    };
+  }
   return result;
 }
 
@@ -244,7 +243,7 @@ function toOpenAIMessages(messages) {
 function parseOpenAIResponse(data) {
   const choice = data.choices[0];
   const msg = choice.message;
-  const result = { text: msg.content || "", toolCalls: [] };
+  const result = { text: msg.content || "", toolCalls: [], usage: null };
   if (msg.tool_calls) {
     for (const tc of msg.tool_calls) {
       result.toolCalls.push({
@@ -256,6 +255,12 @@ function parseOpenAIResponse(data) {
   }
   result.stopReason =
     choice.finish_reason === "tool_calls" ? "tool_calls" : "stop";
+  if (data.usage) {
+    result.usage = {
+      inputTokens: data.usage.prompt_tokens || 0,
+      outputTokens: data.usage.completion_tokens || 0,
+    };
+  }
   return result;
 }
 
@@ -315,6 +320,10 @@ async function sendOllama(config, messages, systemPrompt) {
     text: data.message?.content || "",
     toolCalls: [],
     stopReason: "stop",
+    usage: {
+      inputTokens: data.prompt_eval_count || 0,
+      outputTokens: data.eval_count || 0,
+    },
   };
 }
 

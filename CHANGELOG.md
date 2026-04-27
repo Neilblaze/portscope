@@ -2,6 +2,27 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.3.0] - 2026-04-28
+
+### Added
+- **Animated Process Spinner** — Replaced static UI indicators with an animated 3×3 spiraling grid (`src/ui/spinner.js`) that uses over 140 randomly selected, fun action verbs.
+- **Token & Cost Tracking** — Implemented `src/ai/usage.js` to accumulate token consumption across all providers and estimate session costs via a new `/usage` slash command.
+- **Conversation History & Export** — Automatically saves AI sessions locally. Introduced `/history`, `/load <n>`, and `/export [md|html|txt]` commands to easily restore or save conversations.
+- **Vision Model Support** — Added `src/ai/image.js` to automatically extract and base64-encode image paths (e.g., `.png`, `.jpg`) provided in chat, seamlessly passing them to supported multimodal LLMs.
+- **Micro-Animations** — Added `src/ui/animate.js` to provide high-end CLI visual flair, including staggered text reveals for help menus and flashing success indicators for commands like `/clear`.
+
+### Changed
+- **Security Hardening** — Mitigated shell injection vulnerabilities by introducing strict integer checks for PIDs and shell-safe path sanitization (`src/scanner/sanitize.js`).
+- **File Permissions** — Local configurations and environment variables (`.env`, `config.json`) are now strictly generated with `0o600` permissions inside a `0o700` restricted `~/.portscope` directory.
+- **API Resilience** — Integrated exponential backoff and retry mechanisms into `src/ai/client.js` to gracefully handle transient network timeouts or 502 Bad Gateway errors.
+- **Graceful Shutdowns** — Fixed process lifecycle bugs in `watch` and `logs` commands where hard `process.exit(0)` calls were creating zombie processes. Signal handlers now allow the event loop to drain naturally.
+
+### Fixed
+- Patched a prototype pollution vulnerability inside the internal `deepMerge` utility.
+- Resolved an issue in the `.env` parser where inline comments were not safely stripped.
+- Fixed an `export` bug where unreferenced variables caused errors when no previous text messages existed.
+- Added explicit `npm test` step to CI workflows to prevent regressions. Test suite expanded to 120 robust tests.
+
 ## [1.2.0] - 2026-04-27
 
 ### Added

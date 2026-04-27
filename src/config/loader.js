@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { DEFAULT_CONFIG, PROVIDER_DEFAULTS } from "./schema.js";
@@ -96,7 +96,7 @@ export function getApiKey(config) {
 
 // Get the API key for a specific provider (may differ from configured one)
 export function getApiKeyForProvider(provider) {
-  if (provider === "ollama") return null;
+  if (provider === "ollama") return "local";
   const providerDefaults = PROVIDER_DEFAULTS[provider];
   if (!providerDefaults || !providerDefaults.envKey) return null;
   return process.env[providerDefaults.envKey] || null;
@@ -115,7 +115,7 @@ export function saveApiKey(provider, key) {
 
   // Ensure ~/.portscope/ exists
   if (!existsSync(PORTSCOPE_HOME)) {
-    mkdirSync(PORTSCOPE_HOME, { recursive: true });
+    mkdirSync(PORTSCOPE_HOME, { recursive: true, mode: 0o700 });
   }
 
   const envPath = join(PORTSCOPE_HOME, ".env");
@@ -138,7 +138,8 @@ export function saveApiKey(provider, key) {
   });
 
   lines.push(`${envKey}=${key}`);
-  writeFileSync(envPath, lines.join("\n") + "\n", "utf8");
+  writeFileSync(envPath, lines.join("\n") + "\n", { encoding: "utf8", mode: 0o600 });
+  try { chmodSync(envPath, 0o600); } catch { }
   process.env[envKey] = key;
   persistProviderChoice(provider, PROVIDER_DEFAULTS[provider].model);
 }
@@ -149,7 +150,7 @@ export function saveApiKey(provider, key) {
  */
 export function persistProviderChoice(provider, model, ollamaEndpoint) {
   if (!existsSync(PORTSCOPE_HOME)) {
-    mkdirSync(PORTSCOPE_HOME, { recursive: true });
+    mkdirSync(PORTSCOPE_HOME, { recursive: true, mode: 0o700 });
   }
   const configPath = join(PORTSCOPE_HOME, "config.json");
   let existing = {};
@@ -161,7 +162,8 @@ export function persistProviderChoice(provider, model, ollamaEndpoint) {
   existing.provider = provider;
   if (model) existing.model = model;
   if (ollamaEndpoint !== undefined) existing.ollamaEndpoint = ollamaEndpoint;
-  writeFileSync(configPath, JSON.stringify(existing, null, 2) + "\n", "utf8");
+  writeFileSync(configPath, JSON.stringify(existing, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
+  try { chmodSync(configPath, 0o600); } catch { }
 }
 
 
@@ -178,6 +180,11 @@ function loadDotenv(envPath) {
       if (eqIdx === -1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
       let value = trimmed.slice(eqIdx + 1).trim();
+      // NOTE: Strip inline comments (only when value is not quoted)
+      if (!value.startsWith('"') && !value.startsWith("'")) {
+        const hashIdx = value.indexOf(" #");
+        if (hashIdx !== -1) value = value.slice(0, hashIdx).trim();
+      }
       // Strip surrounding quotes
       if (
         (value.startsWith('"') && value.endsWith('"')) ||
@@ -194,6 +201,8 @@ function loadDotenv(envPath) {
 
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
+    // Guard against prototype pollution
+    if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
     if (
       source[key] &&
       typeof source[key] === "object" &&
