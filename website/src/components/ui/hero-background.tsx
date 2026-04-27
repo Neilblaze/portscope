@@ -36,7 +36,7 @@ export default function HeroBackgroundElements() {
       </div>
       <div
         className="absolute top-[60%] left-[12%] select-none opacity-[0.15]"
-        style={{ transform: `translateY(${scrollY * -0.8}px) rotate(${5 + scrollY * 0.8}deg)` }}
+        style={{ transform: `translateY(${scrollY * -0.25}px) rotate(${5 + scrollY * -0.09}deg)` }}
       >
         <div className="text-6xl md:text-8xl font-black text-muted-foreground text-3d animate-float-scale-slow">
           ?
