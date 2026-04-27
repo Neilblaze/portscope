@@ -1,0 +1,74 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 98%;
+    --foreground: 221 51% 16%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 51% 16%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 51% 16%;
+    --primary: 221 51% 16%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 90%;
+    --secondary-foreground: 221 51% 16%;
+    --muted: 0 0% 90%;
+    --muted-foreground: 0 0% 36%;
+    --accent: 37 98% 53%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 37 98% 53%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 218 50% 3%;
+    --foreground: 0 0% 96%;
+    --card: 222 52% 6%;
+    --card-foreground: 0 0% 96%;
+    --popover: 222 52% 6%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 37 98% 53%;
+    --primary-foreground: 218 50% 3%;
+    --secondary: 221 51% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 221 51% 10%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 37 98% 53%;
+    --accent-foreground: 218 50% 3%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 51% 13%;
+    --input: 220 51% 13%;
+    --ring: 37 98% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+}

@@ -14,50 +14,23 @@
 
 ![breaker](https://user-images.githubusercontent.com/48355572/209539106-8e1cbfc6-2f3d-4afd-b96a-890d967dd9ab.png)
 
-## WTF is this?
+## WTF is this? 🤔
 
 Stop guessing which process is hogging port 3000! 🛑
 
 Eliminate the operational friction of diagnosing port collisions and orphaned workloads. PortScope is an advanced CLI observability suite that aggregates real-time metrics from active development servers, databases, and system daemons into a high-fidelity control plane. Engineered with heuristic framework detection and native Docker container mapping, it accelerates local debugging by providing intelligent context aggregation, interactive process lifecycle management, and integrated AI orchestration for natural language state querying.
 
+<br/>
 
-## What it looks like
 
-```
-$ portscope
+## What it looks like 😎
 
-  ██████╗  ██████╗ ██████╗ ████████╗███████╗ ██████╗ ██████╗ ██████╗ ███████╗
-  ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔════╝
-  ██████╔╝██║   ██║██████╔╝   ██║   ███████╗██║     ██║   ██║██████╔╝█████╗
-  ██╔═══╝ ██║   ██║██╔══██╗   ██║   ╚════██║██║     ██║   ██║██╔═══╝ ██╔══╝
-  ██║     ╚██████╔╝██║  ██║   ██║   ███████║╚██████╗╚██████╔╝██║     ███████╗
-  ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝ ╚═════╝ ╚═════╝╚═╝     ╚══════╝
-  🔊 listening to your ports                                          v1.1.1
+<div align="center">
 
-╭───────┬─────────┬───────┬──────────────────────┬────────────┬────────┬───────────╮
-│ PORT  │ PROCESS │ PID   │ PROJECT              │ FRAMEWORK  │ UPTIME │ STATUS    │
-├───────┼─────────┼───────┼──────────────────────┼────────────┼────────┼───────────┤
-│ :3000 │ node    │ 41245 │ frontend             │ Vue.js     │ 45m    │ ● healthy │
-├───────┼─────────┼───────┼──────────────────────┼────────────┼────────┼───────────┤
-│ :3001 │ node    │ 91248 │ preview-app          │ Vue.js     │ 12m    │ ● healthy │
-├───────┼─────────┼───────┼──────────────────────┼────────────┼────────┼───────────┤
-│ :4566 │ docker  │ 58410 │ backend-localstack-1 │ LocalStack │ 3h 15m │ ● healthy │
-├───────┼─────────┼───────┼──────────────────────┼────────────┼────────┼───────────┤
-│ :5432 │ docker  │ 58411 │ backend-postgres-1   │ PostgreSQL │ 3h 15m │ ● healthy │
-├───────┼─────────┼───────┼──────────────────────┼────────────┼────────┼───────────┤
-│ :6379 │ docker  │ 58412 │ backend-redis-1      │ Redis      │ 3h 15m │ ● healthy │
-╰───────┴─────────┴───────┴──────────────────────┴────────────┴────────┴───────────╯
-
-  5 ports active  ·  Run portscope <port> for details  ·  --all to show everything
-
-  ─────────────────────────────────────────────────────────────────────────────
-  💡 Ask anything — "what's hogging port 3000?" — or use a direct command below.
-     kill <port> · ps · logs <port> · clean · watch · <port> (inspect) · help · exit
-
-  ❯ _
-```
+https://github.com/user-attachments/assets/34940a50-cc58-4295-a52f-c9738af67289
 
 PortScope stays alive after showing your ports — type commands, ask questions in natural language, or use `/help` for the full command list.
+</div>
 
 ---
 
@@ -252,7 +225,7 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 ### Configuration
 
 <details>
-<summary>Environment variables <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary>
+<summary>Environment variables <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary> <br/>
 
 Set in `.env` (project root), `~/.portscope/.env`, or shell environment:
 
@@ -268,7 +241,7 @@ Provider is selected interactively via `/provider` — no env var needed.
 </details>
 
 <details>
-<summary>Config file <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary>
+<summary>Config file <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary> <br/>
 
 Create `portscope.config.json` in your project root or home directory:
 
@@ -313,12 +286,12 @@ Framework detection reads `package.json` dependencies and inspects process comma
 PortScope automatically detects 40+ frameworks by analyzing process commands, port conventions, and project files. For more context refer below.
 
 <details>
-<summary>Supported frameworks <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary>
+<summary>Supported frameworks <img src="https://user-images.githubusercontent.com/48355572/234978665-08b7d16e-dace-479a-a061-478972c43f6b.gif" width="14px" height="14px"></summary> <br/>
 
-- **JavaScript**: Next.js, Vite, React, Vue, Angular, Svelte, SvelteKit, Remix, Astro, Gatsby, Nuxt, Express, Fastify, NestJS, Hono, Koa
-- **Python**: Django, Flask, FastAPI
-- **Other**: Rails, Go, Rust, Java, Docker, PostgreSQL, Redis, MySQL, MongoDB, nginx, LocalStack, RabbitMQ, Kafka, Elasticsearch, MinIO, Webpack, esbuild, Parcel
-- **MLOps / AI**: vLLM, Triton Inference Server, Ollama, llama.cpp, LM Studio, Jupyter, TensorBoard, Gradio, Streamlit, MLflow
+1. **JavaScript**: Next.js, Vite, React, Vue, Angular, Svelte, SvelteKit, Remix, Astro, Gatsby, Nuxt, Express, Fastify, NestJS, Hono, Koa
+2. **Python**: Django, Flask, FastAPI
+3. **Other**: Rails, Go, Rust, Java, Docker, PostgreSQL, Redis, MySQL, MongoDB, nginx, LocalStack, RabbitMQ, Kafka, Elasticsearch, MinIO, Webpack, esbuild, Parcel
+4. **MLOps / AI**: vLLM, Triton Inference Server, Ollama, llama.cpp, LM Studio, Jupyter, TensorBoard, Gradio, Streamlit, MLflow
 
 </details>
 

@@ -2,6 +2,21 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.2.0] - 2026-04-27
+
+### Added
+- **Product Website** — Developed a fully responsive, single-page product website using React, Vite, and Tailwind CSS (`/website`)
+- **Aesthetic UI Components** — Added a dynamic `PackageInstallerTabs` component modeled after premium IDE terminals, glassmorphic feature grids, and a rich 4-column aesthetic footer
+- **Fluidic Background Canvas** — Integrated a highly customized `CrypticFluidBackground` component utilizing HTML5 Canvas and complex sine waves to simulate a matrix-like faded fluidic flow that dynamically adapts to both light and dark themes
+- **Circular View Transitions** — Replaced standard dark mode crossfades with a native `document.startViewTransition` API implementation, providing a flawless expanding radial gradient effect
+- **GitHub Pages CI/CD** — Configured `.github/workflows/deploy-website.yml` to automatically build and securely deploy the Vite React app to `neilblaze.github.io/portscope` whenever changes hit the `website/` directory
+
+### Changed
+- Refined typography by adopting the clean, geometric `Lexend` font across all feature headers
+- Updated Vite configuration to inherently resolve relative `/portscope/` asset paths for seamless GitHub Pages routing
+
+---
+
 ## [1.1.1] - 2026-04-27
 
 ### Added
