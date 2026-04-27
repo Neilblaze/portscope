@@ -20,6 +20,18 @@ Stop guessing which process is hogging port 3000! 🛑
 
 Eliminate the operational friction of diagnosing port collisions and orphaned workloads. PortScope is an advanced CLI observability suite that aggregates real-time metrics from active development servers, databases, and system daemons into a high-fidelity control plane. Engineered with heuristic framework detection and native Docker container mapping, it accelerates local debugging by providing intelligent context aggregation, interactive process lifecycle management, and integrated AI orchestration for natural language state querying.
 
+
+
+<br/>
+
+> [!NOTE]  
+> ### An important question to ask is: Why not use a `skill.md` instead? <br/>
+> 
+> Well, essentially two reasons,
+> <br/>
+> 1. A plain `skills.md` doesn’t behave well with smaller/local models. They don’t have strong instruction hierarchy or long-context discipline, so they either ignore it or overfit to it. In a tool-driven loop (like this CLI setup), that becomes unstable, because the model can’t reliably separate system intent from user intent or tool state. <br/> <br/> Also, considering slightly larger setups (think sandboxed REPL-style agents), “skills” are usually mediated through structured tool schemas, guarded execution, and controlled context injection. That layer acts like a safety boundary between the model and the runtime ... and a raw `skills.md` *bypasses that and gets dumped straight into the prompt*, so there’s no isolation, no validation, and no execution guardrails. On smaller/local models, that can lead to prompt pollution (or better [context rot](https://www.trychroma.com/research/context-rot)), bad tool calls, or the model hallucinating actions it shouldn’t take. <br/> <br/>
+> 2. I also have another take (honest one): it’s also just more fun and flexible this way. Most people running this aren’t on big sandboxed models, they’re on cheaper or local SLMs. A naive `skills.md` dump can actually mess with the model’s flow instead of helping it.
+
 <br/>
 
 
@@ -338,7 +350,7 @@ graph TD
 
 
 > [!NOTE]
-> **Platform Support:** PortScope provides native OS-level observability and is fully validated across macOS, Linux, and Windows environments.
+> **Platform Support:** PortScope provides native OS-level observability and is fully validated across  macOS, Linux, and Windows environments.
 
 ---
 

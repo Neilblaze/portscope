@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/theme-toggle';
 import PackageInstallerTabs from '@/components/ui/package-installer-tabs';
 import CrypticFluidBackground from '@/components/ui/cryptic-fluid-background';
+import HeroBackgroundElements from '@/components/ui/hero-background';
 
 function App() {
   return (
@@ -41,15 +42,16 @@ function App() {
 
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="container mx-auto px-4 pt-24 pb-16 md:pt-32 md:pb-24">
-          <div className="flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
+        <section className="relative container mx-auto px-4 pt-24 pb-16 md:pt-32 md:pb-24">
+          <HeroBackgroundElements />
+          <div className="relative z-10 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
             <div className="inline-flex items-center rounded-full border border-border/50 bg-muted/50 px-3 py-1 text-sm font-medium">
               <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-              A beautiful CLI tool to see & manage what's running on your ports
+              A beautiful CLI tool to see & manage what's running on your ports ✨
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-balance">
-              Stop guessing which process is hogging port 3000!
+              Stop <span className="shimmer-text">guessing</span> which process is hogging port 3000!
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-[42rem] text-balance">

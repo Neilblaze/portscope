@@ -54,6 +54,20 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      keyframes: {
+        draw: {
+          '0%': { strokeDashoffset: '300' },
+          '100%': { strokeDashoffset: '0' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '200% center' },
+          '100%': { backgroundPosition: '-200% center' },
+        }
+      },
+      animation: {
+        draw: 'draw 1.5s ease-out forwards',
+        shimmer: 'shimmer 3s linear infinite',
+      },
     },
   },
   plugins: [],
