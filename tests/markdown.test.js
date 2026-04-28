@@ -29,8 +29,8 @@ describe("renderMarkdown", () => {
 
   it("renders lists", () => {
     const result = renderMarkdown("- item 1\n- item 2");
-    assert.ok(result.includes("  • item 1"));
-    assert.ok(result.includes("  • item 2"));
+    assert.ok(result.includes(chalk.gray("  • ") + "item 1"));
+    assert.ok(result.includes(chalk.gray("  • ") + "item 2"));
   });
 
   it("handles mixed formatting", () => {
