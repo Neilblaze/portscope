@@ -1,6 +1,7 @@
 import { resolveKillTarget } from "../scanner/process.js";
 import chalk from "chalk";
 
+
 // Pause (SIGSTOP) a process by port or PID.
 // This suspends the process without terminating it — useful for temporarily freeing resources.
 export async function pauseCommand(filteredArgs) {
@@ -106,3 +107,4 @@ export function sendSignal(pid, signal) {
     return false;
   }
 }
+

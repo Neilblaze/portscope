@@ -32,6 +32,7 @@ const TABLE_STYLE = {
 export function displayPortTable(ports, filtered = false, showBanner = true) {
   if (showBanner) renderBanner();
 
+  // TODO: I'll try to make this a bit more better when I get some peace of mind and time :)
   if (ports.length === 0) {
     console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Ports Found") + chalk.gray(" ────────────────────────╮"));
     console.log(chalk.gray("  │                                         │"));

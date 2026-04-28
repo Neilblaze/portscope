@@ -99,7 +99,7 @@ export function toOpenAIImageContent(text, images) {
 }
 
 
-// Build Ollama images array (base64 strings only).
+// Build Ollama images array (base64 strings only)
 export function toOllamaImages(images) {
   return images.map((img) => img.base64);
 }

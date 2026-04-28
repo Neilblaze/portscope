@@ -4,6 +4,7 @@ import { isDevProcess } from "../scanner/utils.js";
 import chalk from "chalk";
 import { createInterface } from "readline";
 
+
 export async function killCommand(filteredArgs, rl) {
   const rawKillArgs = filteredArgs
     .slice(1)

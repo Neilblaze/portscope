@@ -2,6 +2,7 @@ import { watchPorts } from "../scanner/ports.js";
 import { displayWatchEvent, displayWatchHeader } from "../ui/watch.js";
 import chalk from "chalk";
 
+
 export async function watchCommand() {
   displayWatchHeader();
   const interval = watchPorts((type, info) => {

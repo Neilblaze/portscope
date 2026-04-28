@@ -4,7 +4,6 @@ import chalk from "chalk";
 import { createInterface } from "readline";
 
 
-
 export async function cleanCommand(rl) {
   const orphaned = await findOrphanedProcesses();
   const killed = [];

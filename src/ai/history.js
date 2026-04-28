@@ -30,9 +30,7 @@ function saveIndex(index) {
 }
 
 
-/**
- * Generate a conversation ID based on date and sequence.
- */
+// Generate a conversation ID based on date and sequence
 export function generateConversationId() {
   const date = new Date().toISOString().slice(0, 10);
   const index = loadIndex();
@@ -41,9 +39,7 @@ export function generateConversationId() {
 }
 
 
-/**
- * Save/update a conversation to disk.
- */
+// Save/update a conversation to disk
 export function saveConversation(id, config, messages) {
   ensureHistoryDir();
   const index = loadIndex();
@@ -104,9 +100,7 @@ export function saveConversation(id, config, messages) {
 }
 
 
-/**
- * Load a conversation from disk by ID.
- */
+// Load a conversation from disk by ID
 export function loadConversation(id) {
   const convFile = join(HISTORY_DIR, `${id}.json`);
   if (!existsSync(convFile)) return null;
@@ -128,9 +122,7 @@ export function listConversations(count = 20) {
 }
 
 
-/**
- * Print conversation history list.
- */
+// Print conversation history list
 export function printHistory() {
   const conversations = listConversations(20);
 
@@ -161,9 +153,7 @@ export function printHistory() {
 }
 
 
-/**
- * Print a preview of a conversation.
- */
+// Print a preview of a conversation
 export function printConversationPreview(conv) {
   console.log();
   console.log(chalk.cyan.bold(`  Preview: ${conv.title}`));
@@ -272,28 +262,28 @@ function exportAsHtml(conv) {
     .join("\n");
 
   return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PortScope — ${escapeHtml(conv.title)}</title>
-<style>
-  body { font-family: 'Inter', -apple-system, sans-serif; background: #0d1117; color: #c9d1d9; max-width: 720px; margin: 0 auto; padding: 2rem; }
-  h1 { color: #64c8ff; font-size: 1.4rem; }
-  .meta { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
-  .msg { padding: 1rem; margin: 0.5rem 0; border-radius: 8px; }
-  .user { background: #161b22; border-left: 3px solid #64c8ff; }
-  .assistant { background: #1c2128; border-left: 3px solid #3fb950; }
-  .role { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #8b949e; margin-bottom: 0.4rem; }
-  .text { white-space: pre-wrap; line-height: 1.6; }
-</style>
-</head>
-<body>
-<h1>🔊 PortScope Conversation</h1>
-<div class="meta">${conv.provider} · ${conv.model} · ${new Date(conv.startedAt).toLocaleString()}</div>
-${msgs}
-</body>
-</html>`;
+  <html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PortScope — ${escapeHtml(conv.title)}</title>
+  <style>
+    body { font-family: 'Inter', -apple-system, sans-serif; background: #0d1117; color: #c9d1d9; max-width: 720px; margin: 0 auto; padding: 2rem; }
+    h1 { color: #64c8ff; font-size: 1.4rem; }
+    .meta { color: #8b949e; font-size: 0.85rem; margin-bottom: 2rem; }
+    .msg { padding: 1rem; margin: 0.5rem 0; border-radius: 8px; }
+    .user { background: #161b22; border-left: 3px solid #64c8ff; }
+    .assistant { background: #1c2128; border-left: 3px solid #3fb950; }
+    .role { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #8b949e; margin-bottom: 0.4rem; }
+    .text { white-space: pre-wrap; line-height: 1.6; }
+  </style>
+  </head>
+    <body>
+    <h1>🔊 PortScope Conversation</h1>
+    <div class="meta">${conv.provider} · ${conv.model} · ${new Date(conv.startedAt).toLocaleString()}</div>
+    ${msgs}
+  </body>
+  </html>`;
 }
 
 

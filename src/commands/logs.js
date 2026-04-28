@@ -5,7 +5,6 @@ import { createInterface } from "readline";
 import { spawn } from "child_process";
 
 
-
 function spawnTail(filePath, numLines, follow = true) {
   if (process.platform === "win32") {
     const waitFlag = follow ? " -Wait" : "";

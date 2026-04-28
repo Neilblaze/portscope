@@ -67,6 +67,8 @@ function saveMetrics() {
   } catch { }
 }
 
+
+
 // Approximate pricing per 1M tokens [input, output] in USD : 28th April, 2026
 // TASK (WIP): Will try to write a helper function that programmatically retrieves this from the web
 const PRICING = {
@@ -197,9 +199,7 @@ function formatNum(n) {
 }
 
 
-/**
- * Compute extended rate metrics from session data.
- */
+// Compute extended rate metrics from session data.
 function computeMetrics(model) {
   const elapsedMs = Math.max(Date.now() - session.startedAt, 1);
   const elapsedSec = elapsedMs / 1000;
@@ -401,5 +401,4 @@ async function measurePing(state, provider) {
     return { error: err.name === "TimeoutError" ? "timeout" : "unreachable", elapsed: Date.now() - start, label };
   }
 }
-
 

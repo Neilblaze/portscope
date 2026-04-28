@@ -8,6 +8,7 @@ let _config = null;
 /** Directory for persistent PortScope config (~/.portscope/) */
 const PORTSCOPE_HOME = join(homedir(), ".portscope");
 
+
 /**
  * Load configuration from portscope.config.json and environment variables.
  * Search order: ./portscope.config.json → ~/.portscope.config.json → defaults.

@@ -1,6 +1,7 @@
 import { PROVIDER_DEFAULTS } from "./schema.js";
 
 // NOTE: Needs to be updated when new models are released
+// Or, maybe I should automate this? 🤔 ... nvm, will do later
 const CURATED_MODELS = {
   anthropic: [
     { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5" },
