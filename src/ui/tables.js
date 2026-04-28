@@ -33,12 +33,14 @@ export function displayPortTable(ports, filtered = false, showBanner = true) {
   if (showBanner) renderBanner();
 
   if (ports.length === 0) {
-    console.log(chalk.gray("  No active listening ports found.\n"));
-    console.log(
-      chalk.gray("  Start a dev server and run ") +
-      chalk.cyan("portscope") +
-      chalk.gray(" again.\n"),
-    );
+    console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Ports Found") + chalk.gray(" ────────────────────────╮"));
+    console.log(chalk.gray("  │                                         │"));
+    console.log(chalk.gray("  │  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
+    console.log(chalk.gray("  │  ") + chalk.white("dev servers right now.") + chalk.gray("                 │"));
+    console.log(chalk.gray("  │                                         │"));
+    console.log(chalk.gray("  │  ") + chalk.dim("Start your Next.js, Vite, or Python") + chalk.gray("    │"));
+    console.log(chalk.gray("  │  ") + chalk.dim("backend and run ") + chalk.cyan("portscope") + chalk.dim(" again.") + chalk.gray("       │"));
+    console.log(chalk.gray("  ╰─────────────────────────────────────────╯\n"));
     return;
   }
 
@@ -94,12 +96,14 @@ export function displayProcessTable(processes, filtered = false, showBanner = tr
   if (showBanner) renderBanner();
 
   if (processes.length === 0) {
-    console.log(chalk.gray("  No dev processes found.\n"));
-    console.log(
-      chalk.gray("  Run ") +
-      chalk.cyan("portscope ps --all") +
-      chalk.gray(" to show all processes.\n"),
-    );
+    console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Processes Found") + chalk.gray(" ────────────────────╮"));
+    console.log(chalk.gray("  │                                         │"));
+    console.log(chalk.gray("  │  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
+    console.log(chalk.gray("  │  ") + chalk.white("dev processes right now.") + chalk.gray("               │"));
+    console.log(chalk.gray("  │                                         │"));
+    console.log(chalk.gray("  │  ") + chalk.dim("Run ") + chalk.cyan("portscope ps --all") + chalk.dim(" to see all") + chalk.gray("      │"));
+    console.log(chalk.gray("  │  ") + chalk.dim("processes, including system apps.") + chalk.gray("       │"));
+    console.log(chalk.gray("  ╰─────────────────────────────────────────╯\n"));
     return;
   }
 

@@ -53,9 +53,6 @@ Security & Guardrails (CRITICAL):
 
 
 
-/**
- * Start the interactive AI chat loop.
- */
 export async function startChat(config, apiKey) {
   const messages = [];
   const conversationId = generateConversationId();
@@ -140,9 +137,6 @@ export async function startChat(config, apiKey) {
 }
 
 
-/**
- * Handle slash commands. Returns "exit" to close, or void.
- */
 export async function handleSlashCommand(input, state, messages, rl) {
   const parts = input.slice(1).split(/\s+/);
   const cmd = parts[0].toLowerCase();
@@ -185,7 +179,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
       return;
 
     case "usage":
-      printUsage(state);
+      await printUsage(state);
       return;
 
     case "history":
@@ -290,7 +284,7 @@ function printSlashHelp() {
     `  ${chalk.cyan("/models")}          Browse and select a model`,
     `  ${chalk.cyan("/model <name>")}    Set model directly`,
     `  ${chalk.cyan("/status")}          Show current provider & model`,
-    `  ${chalk.cyan("/usage")}           Show token usage & estimated cost`,
+    `  ${chalk.cyan("/usage")}           Usage dashboard, context & telemetry`,
     `  ${chalk.cyan("/clear")}           Reset conversation history`,
     "",
     chalk.cyan.bold("  History & Export"),
@@ -341,9 +335,8 @@ function printStatus(state) {
 }
 
 
-/**
- * Interactive provider switcher with API key setup.
- */
+
+
 async function switchProvider(state, rl) {
   console.log();
   console.log(chalk.cyan.bold("  Select a Provider"));
@@ -582,6 +575,7 @@ function question(rl, prompt) {
 export async function processConversation(config, apiKey, messages, rl) {
   const spinner = startSpinner();
 
+  const t0 = Date.now();
   let response = await sendMessage(
     config,
     apiKey,
@@ -591,7 +585,7 @@ export async function processConversation(config, apiKey, messages, rl) {
   );
 
   spinner.stop();
-  trackUsage(response.usage);
+  trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
 
   // Tool calling loop — AI can make multiple rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
@@ -616,6 +610,7 @@ export async function processConversation(config, apiKey, messages, rl) {
     messages.push({ role: "user", toolResults });
 
     const toolSpinner = startSpinner();
+    const t1 = Date.now();
     response = await sendMessage(
       config,
       apiKey,
@@ -624,7 +619,7 @@ export async function processConversation(config, apiKey, messages, rl) {
       SYSTEM_PROMPT,
     );
     toolSpinner.stop();
-    trackUsage(response.usage);
+    trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
   }
 
   if (response.text) {

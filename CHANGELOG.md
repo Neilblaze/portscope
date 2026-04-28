@@ -2,6 +2,14 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.4.0] - 2026-04-29
+
+### Added
+- **Expanded AI Ecosystem** — Added full support for Google Gemini, Cerebras, and Groq inference providers, expanding the total provider count to 8. Integrated their respective fast-inference models and custom API authentication schemas.
+- **Empty State Modernization** — Replaced basic text "Not Found" terminal messages for inactive port/process views with professional, high-fidelity ASCII "Bento" UI panels.
+- **Unified Observability Dashboard** — Consolidated additional metrics into the main `/usage` command. Introduced a beautifully engineered 128k context utilization grid and real-time connectivity status metrics.
+- **Model-Specific Usage Persistence** — `portscope` now automatically saves and persists `session` metrics to `~/.portscope/metrics.json`. Usage stats remain intact across restarts, automatically resetting only when a different AI provider or model is explicitly selected.
+
 ## [1.3.0] - 2026-04-28
 
 ### Added

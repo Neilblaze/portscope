@@ -204,10 +204,23 @@ function slashCompleter(line) {
 /**
  * Parse and execute direct commands in the REPL.
  * Returns true if the input was handled as a command, false otherwise.
+ *
+ * NOTE: If the input contains conjunctions (and, then, also, plus) after a
+ * recognized command keyword, it is likely a compound/mixed intent such as
+ * "kill 3000 and show port 8080". These are routed to the AI instead of
+ * half-executing only the first command.
  */
 async function handleDirectCommand(input, rl) {
   const parts = input.split(/\s+/);
   const cmd = parts[0].toLowerCase();
+
+  // Guard: detect compound/mixed-intent queries and route them to AI
+  const CONJUNCTIONS = /\b(and\s+then|and\s+also|and\s+show|and\s+kill|and\s+list|then\s+show|then\s+kill|then\s+list|also\s+show|also\s+kill|also\s+list|\band\b.*\b(?:show|kill|list|inspect|clean|watch|pause|resume|logs|ps)\b)\b/i;
+  const COMMAND_WORDS = new Set(["kill", "ps", "clean", "logs", "watch", "pause", "resume", "inspect", "list", "ports", "help"]);
+  if (COMMAND_WORDS.has(cmd) && parts.length > 2 && CONJUNCTIONS.test(input)) {
+    // Falls through to AI for compound resolution
+    return false;
+  }
 
   // Bare port number → inspect
   const portNum = parseInt(cmd, 10);

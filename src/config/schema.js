@@ -25,6 +25,13 @@ export const PROVIDER_DEFAULTS = {
     modelsUrl: null,
     label: "OpenAI",
   },
+  gemini: {
+    model: "gemini-2.5-flash",
+    envKey: "GEMINI_API_KEY",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    modelsUrl: null,
+    label: "Google Gemini",
+  },
   openrouter: {
     model: "qwen/qwen3.5-flash-02-23",
     envKey: "OPENROUTER_API_KEY",
@@ -39,6 +46,20 @@ export const PROVIDER_DEFAULTS = {
     modelsUrl: "https://integrate.api.nvidia.com/v1/models",
     label: "NVIDIA NIM",
   },
+  cerebras: {
+    model: "llama-4-scout-17b-16e-instruct",
+    envKey: "CEREBRAS_API_KEY",
+    baseUrl: "https://api.cerebras.ai/v1/chat/completions",
+    modelsUrl: "https://api.cerebras.ai/v1/models",
+    label: "Cerebras",
+  },
+  groq: {
+    model: "llama-3.3-70b-versatile",
+    envKey: "GROQ_API_KEY",
+    baseUrl: "https://api.groq.com/openai/v1/chat/completions",
+    modelsUrl: "https://api.groq.com/openai/v1/models",
+    label: "Groq",
+  },
   ollama: {
     model: "llama3",
     envKey: null,
@@ -49,5 +70,5 @@ export const PROVIDER_DEFAULTS = {
 };
 
 
-export const PROVIDER_IDS = ["anthropic", "openai", "openrouter", "nvidia", "ollama"];
+export const PROVIDER_IDS = ["anthropic", "openai", "gemini", "openrouter", "nvidia", "cerebras", "groq", "ollama"];
 

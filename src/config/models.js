@@ -13,8 +13,42 @@ const CURATED_MODELS = {
     { id: "gpt-5.4-mini", name: "GPT-5.4 Mini" },
     { id: "gpt-5.4-nano", name: "GPT-5.4 Nano" },
     { id: "gpt-5-nano", name: "GPT-5 Nano" },
+    { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
     { id: "gpt-4o-mini", name: "GPT-4o Mini" },
     { id: "gpt-4o", name: "GPT-4o" },
+    { id: "gpt-oss-120b", name: "GPT-OSS 120B" },
+    { id: "qwen3-235b-a22b-2507", name: "Qwen 3 235B" },
+  ],
+  cerebras: [
+    { id: "llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout 17B" },
+    { id: "llama-3.3-70b", name: "Llama 3.3 70B" },
+    { id: "llama3.1-8b", name: "Llama 3.1 8B" },
+  ],
+  groq: [
+    { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B Versatile" },
+    { id: "llama-3.1-8b-instant", name: "Llama 3.1 8B Instant" },
+    { id: "gemma2-9b-it", name: "Gemma 2 9B IT" },
+    { id: "mixtral-8x7b-32768", name: "Mixtral 8x7B" },
+  ],
+  gemini: [
+    { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash" },
+    { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite" },
+    { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro" },
+    { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
+  ],
+  openrouter: [
+    { id: "openai/gpt-oss-120b", name: "GPT-OSS 120B (OpenAI)" },
+    { id: "openai/gpt-oss-20b", name: "GPT-OSS 20B (OpenAI)" },
+    { id: "meta-llama/llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout 17B (Meta)" },
+    { id: "meta-llama/llama-4-scout", name: "Llama 4 Scout (Meta)" },
+    { id: "meta-llama/llama-4-maverick", name: "Llama 4 Maverick (Meta)" },
+    { id: "qwen/qwen3-32b", name: "Qwen 3 32B" },
+    { id: "moonshotai/kimi-k2-instruct", name: "Kimi K2 Instruct (Moonshot)" },
+    { id: "deepseek/deepseek-r1", name: "DeepSeek R1" },
+    { id: "deepseek/deepseek-chat", name: "DeepSeek Chat" },
+    { id: "mistralai/mistral-large-2407", name: "Mistral Large (2407)" },
+    { id: "mistralai/mistral-small-2603", name: "Mistral Small (2603)" },
+    { id: "mistralai/devstral-2", name: "Devstral 2" },
   ],
 };
 
@@ -152,6 +186,22 @@ export async function validateApiKey(provider, apiKey) {
         return { valid: false, error: "Invalid API key" };
       }
       return { valid: true, error: null };
+    }
+
+    if (provider === "gemini") {
+      try {
+        const url = `${defaults.baseUrl}/models?key=${apiKey}`;
+        const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+        if (res.status === 400 || res.status === 403) {
+          return { valid: false, error: "Invalid API key" };
+        }
+        return { valid: true, error: null };
+      } catch (err) {
+        if (err.name === "TimeoutError") {
+          return { valid: false, error: "Connection timed out" };
+        }
+        return { valid: false, error: err.message };
+      }
     }
 
     // OpenAI-compatible providers: hit /models endpoint

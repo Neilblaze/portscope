@@ -36,13 +36,16 @@ describe("PROVIDER_IDS", () => {
   it("includes all expected providers", () => {
     assert.ok(PROVIDER_IDS.includes("anthropic"));
     assert.ok(PROVIDER_IDS.includes("openai"));
+    assert.ok(PROVIDER_IDS.includes("gemini"));
     assert.ok(PROVIDER_IDS.includes("openrouter"));
     assert.ok(PROVIDER_IDS.includes("nvidia"));
+    assert.ok(PROVIDER_IDS.includes("cerebras"));
+    assert.ok(PROVIDER_IDS.includes("groq"));
     assert.ok(PROVIDER_IDS.includes("ollama"));
   });
 
-  it("has exactly 5 providers", () => {
-    assert.equal(PROVIDER_IDS.length, 5);
+  it("has exactly 8 providers", () => {
+    assert.equal(PROVIDER_IDS.length, 8);
   });
 });
 

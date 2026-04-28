@@ -16,6 +16,12 @@ export async function sendMessage(config, apiKey, messages, tools, systemPrompt)
           return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl);
         case "nvidia":
           return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl);
+        case "cerebras":
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl);
+        case "groq":
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl);
+        case "gemini":
+          return await sendGemini(config, apiKey, messages, tools, systemPrompt);
         case "ollama":
           return await sendOllama(config, messages, systemPrompt);
         default:
@@ -139,10 +145,10 @@ function parseAnthropicResponse(data) {
 
 
 
-// ── OpenAI / OpenRouter / NVIDIA NIM ───────────────────────────────────────── ///
+// ── OpenAI / OpenRouter / NVIDIA NIM / Cerebras / Groq ──────────────────── ///
 
 async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl) {
-  // OpenAI newer models require max_completion_tokens; OpenRouter/NVIDIA use max_tokens
+  // OpenAI newer models require max_completion_tokens; all others use max_tokens
   const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
   const body = {
     model: config.ai.model,
@@ -327,3 +333,142 @@ async function sendOllama(config, messages, systemPrompt) {
   };
 }
 
+
+
+// ── Google Gemini ──────────────────────────────────────────────────────── ///
+
+async function sendGemini(config, apiKey, messages, tools, systemPrompt) {
+  const model = config.ai.model;
+  const baseUrl = PROVIDER_DEFAULTS.gemini.baseUrl;
+  const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`;
+
+  const body = {
+    system_instruction: { parts: [{ text: systemPrompt }] },
+    contents: toGeminiMessages(messages),
+    tools: tools.length > 0 ? [{
+      function_declarations: tools.map((t) => ({
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      })),
+    }] : undefined,
+    generationConfig: {
+      maxOutputTokens: config.ai.maxTokens,
+    },
+  };
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      throw new Error(
+        `Gemini API timed out after 30s. The model "${model}" may be slow — try again.`,
+      );
+    }
+    throw err;
+  }
+
+  if (!res.ok) {
+    const err = await res.text();
+    if (res.status === 400 && err.includes("API_KEY_INVALID")) {
+      throw new Error("Invalid Gemini API key. Check your GEMINI_API_KEY.");
+    }
+    throw new Error(`Gemini API error (${res.status}): ${err}`);
+  }
+
+  const data = await res.json();
+  return parseGeminiResponse(data);
+}
+
+function toGeminiMessages(messages) {
+  const result = [];
+  for (const msg of messages) {
+    if (msg.role === "user") {
+      if (msg.toolResults) {
+        const parts = msg.toolResults.map((tr) => ({
+          functionResponse: {
+            name: tr.name || "tool",
+            response: tr.result,
+          },
+        }));
+        result.push({ role: "user", parts });
+      } else if (Array.isArray(msg.content)) {
+        const parts = msg.content.map((c) => {
+          if (c.type === "text") return { text: c.text };
+          if (c.type === "image" && c.source) {
+            return {
+              inline_data: {
+                mime_type: c.source.media_type,
+                data: c.source.data,
+              },
+            };
+          }
+          if (c.type === "image_url" && c.image_url?.url) {
+            const match = c.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
+            if (match) {
+              return { inline_data: { mime_type: match[1], data: match[2] } };
+            }
+          }
+          return { text: JSON.stringify(c) };
+        });
+        result.push({ role: "user", parts });
+      } else {
+        result.push({ role: "user", parts: [{ text: msg.content }] });
+      }
+    } else if (msg.role === "assistant") {
+      const parts = [];
+      if (msg.text) parts.push({ text: msg.text });
+      if (msg.toolCalls) {
+        for (const tc of msg.toolCalls) {
+          parts.push({
+            functionCall: {
+              name: tc.name,
+              args: tc.input,
+            },
+          });
+        }
+      }
+      if (parts.length > 0) {
+        result.push({ role: "model", parts });
+      }
+    }
+  }
+  return result;
+}
+
+function parseGeminiResponse(data) {
+  const result = { text: "", toolCalls: [], usage: null };
+
+  const candidate = data.candidates?.[0];
+  if (!candidate || !candidate.content) return result;
+
+  for (const part of candidate.content.parts || []) {
+    if (part.text) result.text += part.text;
+    if (part.functionCall) {
+      result.toolCalls.push({
+        id: `gemini_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name: part.functionCall.name,
+        input: part.functionCall.args || {},
+      });
+    }
+  }
+
+  const hasToolCalls = result.toolCalls.length > 0;
+  result.stopReason = hasToolCalls ? "tool_calls" :
+    (candidate.finishReason === "STOP" ? "stop" : "stop");
+
+  if (data.usageMetadata) {
+    result.usage = {
+      inputTokens: data.usageMetadata.promptTokenCount || 0,
+      outputTokens: data.usageMetadata.candidatesTokenCount || 0,
+    };
+  }
+
+  return result;
+}
