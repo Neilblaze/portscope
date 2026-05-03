@@ -74,6 +74,15 @@ export function formatStatus(status) {
   return `${icon} ${labels[status] || labels.unknown}`;
 }
 
+export function formatEnvironment(env) {
+  if (!env || env === "unknown") return chalk.gray("—");
+  if (env === "development") return chalk.green("dev");
+  if (env === "production") return chalk.yellow("prod");
+  if (env === "test") return chalk.blue("test");
+  if (env === "staging") return chalk.magenta("stage");
+  return chalk.gray(env.slice(0, 5));
+}
+
 export function truncate(str, max) {
   if (!str) return "";
   return str.length > max ? str.slice(0, max - 1) + "…" : str;

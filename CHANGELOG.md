@@ -2,6 +2,30 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.5.0] - 2026-05-03
+
+### Added
+- **Environment Detection** — PortScope now automatically detects and displays the runtime environment (development, production, test, staging) for each process. Added new `ENV` column in the port table between `FRAMEWORK` and `UPTIME`, showing color-coded environment indicators: green (dev), yellow (prod), blue (test), magenta (stage).
+- **Live Traffic Visibility in Watch Mode** — `portscope watch` now displays active connection counts and request rates (req/s) for each port in real-time. Shows connection metrics when ports are discovered and updates when traffic patterns change, helping identify load issues and monitor live traffic without additional tools.
+- **Added Autocomplete Suggestions** — Implemented intelligent autocomplete suggestions for slash commands and direct commands as you type, similar to fish shell's autosuggestions. Press right arrow or Ctrl+E to accept suggestions. No third-party dependencies required.
+- **Enhanced Help UI** — Updated help text section headers with vibrant orange color (`rgb(255, 140, 0)`) for better visual hierarchy and improved readability. Sections "Direct Commands", "AI & Config", and "History & Export" now stand out prominently.
+- **Comprehensive Environment Detection** — Supports 15+ frameworks including Node.js (Next.js, Vite, Nuxt), Python (Django, Flask, FastAPI), Ruby (Rails), and detects from environment variables (`NODE_ENV`, `RAILS_ENV`, `DJANGO_SETTINGS_MODULE`), command-line flags (`--env=`, `--mode=`, `--production`), and process patterns (npm scripts, nodemon, pm2, gunicorn).
+
+### Changed
+- **Command Alignment** — Improved visual alignment in interactive mode so command shortcuts align perfectly with the "Ask" text above for better readability.
+- **Test Suite Expansion** — Expanded test coverage from 120 to 172 tests, adding 31 environment detection tests, 7 format tests, and 14 ghost text suggestion tests. All tests passing with zero failures.
+- **Enhanced Watch Mode Alignment** — All columns in watch mode now align perfectly with right-aligned numeric values. Process names are left-padded to a consistent width, connection counts and request rates stack vertically, and separators line up across all rows for improved readability.
+
+### Fixed
+- **Watch Command Ctrl+C Crash** — Resolved critical bug where pressing Ctrl+C in watch mode would cause `ERR_USE_AFTER_CLOSE` readline error. Fixed by using `process.once()` instead of `process.on()` for SIGINT handlers and adding readline state checks before prompting. Watch command now exits cleanly without crashes.
+- **SIGINT Handler Conflicts** — Eliminated conflicting SIGINT handlers between interactive mode and watch command that caused readline interface to close prematurely. Added proper cleanup with `process.off()` to remove handlers after use.
+- **Readline State Management** — Added defensive checks (`!rl.closed`) in 5 critical locations throughout the interactive prompt loop to prevent attempting operations on closed readline interfaces.
+
+### Technical
+- **New Modules**: `src/scanner/environment.js` (350 lines), `src/ui/ghost-text.js` (290 lines)
+- **New Tests**: `tests/environment.test.js` (31 tests), `tests/format.test.js` (7 tests), `tests/ghost-text.test.js` (14 tests)
+- **Cross-Platform**: Environment detection works on Linux (reads `/proc/<pid>/environ`), macOS (uses `ps eww`), and Windows (limited support via `wmic`)
+
 ## [1.4.0] - 2026-04-29
 
 ### Added

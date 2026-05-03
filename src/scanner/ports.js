@@ -12,11 +12,10 @@ import {
   detectFrameworkFromCommand,
   detectFrameworkFromImage,
 } from "./framework.js";
+import { detectEnvironment } from "./environment.js";
 
 
-/**
- * Batch-fetch docker container info mapped by host port. Also, Docker CLI is cross-platform.
- */
+
 function batchDockerInfo() {
   const map = new Map();
   try {
@@ -46,7 +45,7 @@ function batchDockerInfo() {
   return map;
 }
 
-// Get all listening ports with process info
+
 export async function getListeningPorts(detailed = false) {
   const platform = await getPlatform();
   const entries = platform.getListeningPortsRaw();
@@ -83,6 +82,7 @@ export async function getListeningPorts(detailed = false) {
       cwd: null,
       projectName: null,
       framework: null,
+      environment: null,
       uptime: null,
       startTime: null,
       status: "healthy",
@@ -108,6 +108,8 @@ export async function getListeningPorts(detailed = false) {
       if (!info.framework) {
         info.framework = detectFrameworkFromCommand(ps.command, processName);
       }
+
+      info.environment = detectEnvironment(pid, ps.command, processName);
     }
 
     const docker = dockerMap.get(port);
@@ -143,9 +145,7 @@ export async function getListeningPorts(detailed = false) {
   return results.sort((a, b) => a.port - b.port);
 }
 
-/**
- * Get detailed info for a specific port.
- */
+// Get detailed info for a specific port
 export async function getPortDetails(targetPort) {
   const ports = await getListeningPorts(true);
   return ports.find((p) => p.port === targetPort) || null;
@@ -153,23 +153,49 @@ export async function getPortDetails(targetPort) {
 
 export function watchPorts(callback, intervalMs = 2000) {
   let previousPorts = new Set();
+  let previousMetrics = new Map(); // NOTE: tracking for rate calculation
   let running = false;
 
   const check = async () => {
     if (running) return;
     running = true;
     try {
+      const platform = await getPlatform();
       const current = await getListeningPorts();
       const currentSet = new Set(current.map((p) => p.port));
+      const connectionCounts = platform.getConnectionCounts();
+      const now = Date.now();
 
       for (const p of current) {
+        const connections = connectionCounts.get(p.port) || 0;
+        const prevMetric = previousMetrics.get(p.port);
+        
+        let requestRate = 0;
+        if (prevMetric) {
+          const timeDiff = (now - prevMetric.timestamp) / 1000;
+          const connectionDiff = Math.abs(connections - prevMetric.connections);
+          
+          if (timeDiff > 0 && connectionDiff > 0) {
+            requestRate = connectionDiff / timeDiff;
+          }
+        }
+
+        previousMetrics.set(p.port, {
+          connections,
+          timestamp: now,
+        });
+
         if (!previousPorts.has(p.port)) {
-          callback("new", p);
+          callback("new", { ...p, connections, requestRate });
+        } else if (prevMetric && (connections !== prevMetric.connections || requestRate > 0)) {
+          // Emit update event for existing ports with changed metrics
+          callback("update", { ...p, connections, requestRate });
         }
       }
 
       for (const port of previousPorts) {
         if (!currentSet.has(port)) {
+          previousMetrics.delete(port);
           callback("removed", { port });
         }
       }

@@ -262,3 +262,54 @@ export function getProcessTree(pid) {
 
   return tree;
 }
+
+
+export function getConnectionCounts() {
+  const connectionMap = new Map();
+  
+  if (commandExists("ss")) {
+    try {
+      const raw = execSync("ss -tn state established 2>/dev/null", {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+
+      const lines = raw.trim().split("\n").slice(1);
+      for (const line of lines) {
+        const parts = line.split(/\s+/);
+        if (parts.length < 4) continue;
+
+        const localAddr = parts[3];
+        const portMatch = localAddr.match(/:(\d+)$/);
+        if (!portMatch) continue;
+        const port = parseInt(portMatch[1], 10);
+
+        connectionMap.set(port, (connectionMap.get(port) || 0) + 1);
+      }
+      return connectionMap;
+    } catch { }
+  }
+
+  if (commandExists("netstat")) {
+    try {
+      const raw = execSync("netstat -tn 2>/dev/null | grep ESTABLISHED", {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+
+      for (const line of raw.trim().split("\n")) {
+        const parts = line.split(/\s+/);
+        if (parts.length < 4) continue;
+
+        const localAddr = parts[3];
+        const portMatch = localAddr.match(/:(\d+)$/);
+        if (!portMatch) continue;
+        const port = parseInt(portMatch[1], 10);
+
+        connectionMap.set(port, (connectionMap.get(port) || 0) + 1);
+      }
+    } catch { }
+  }
+
+  return connectionMap;
+}

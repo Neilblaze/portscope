@@ -169,20 +169,20 @@ $ portscope logs 3000 --lines 5
 portscope ps
 ```
 
-A beautiful `ps aux` for developers — full process names, CPU%, memory, framework detection, and a smart description column.
+A beautiful `ps aux` for developers — full process names, CPU%, memory, framework detection, environment detection (dev/prod/test/staging), and a smart description column.
 
 ```
 $ portscope ps
 
-╭───────┬─────────────┬──────┬──────────┬──────────┬───────────┬─────────┬────────────────────────────────╮
-│ PID   │ PROCESS     │ CPU% │ MEM      │ PROJECT  │ FRAMEWORK │ UPTIME  │ WHAT                           │
-├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────────┼────────────────────────────────┤
-│ 584   │ Docker      │ 1.5  │ 842.1 MB │ —        │ Docker    │ 2d 5h   │ 12 processes                   │
-├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────────┼────────────────────────────────┤
-│ 32194 │ python3     │ 0.4  │ 45.2 MB  │ backend  │ Python    │ 5h 10m  │ uvicorn main:app --reload      │
-├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────────┼────────────────────────────────┤
-│ 21245 │ node        │ 0.2  │ 112.5 MB │ frontend │ Node.js   │ 45m     │ vite                           │
-╰───────┴─────────────┴──────┴──────────┴──────────┴───────────┴─────────┴────────────────────────────────╯
+╭───────┬─────────────┬──────┬──────────┬──────────┬───────────┬─────┬─────────┬────────────────────────────────╮
+│ PID   │ PROCESS     │ CPU% │ MEM      │ PROJECT  │ FRAMEWORK │ ENV │ UPTIME  │ WHAT                           │
+├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────┼─────────┼────────────────────────────────┤
+│ 584   │ Docker      │ 1.5  │ 842.1 MB │ —        │ Docker    │ —   │ 2d 5h   │ 12 processes                   │
+├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────┼─────────┼────────────────────────────────┤
+│ 32194 │ python3     │ 0.4  │ 45.2 MB  │ backend  │ Python    │ dev │ 5h 10m  │ uvicorn main:app --reload      │
+├───────┼─────────────┼──────┼──────────┼──────────┼───────────┼─────┼─────────┼────────────────────────────────┤
+│ 21245 │ node        │ 0.2  │ 112.5 MB │ frontend │ Node.js   │ dev │ 45m     │ vite                           │
+╰───────┴─────────────┴──────┴──────────┴──────────┴───────────┴─────┴─────────┴────────────────────────────────╯
 
   3 processes  ·  --all to show everything
 ```
@@ -191,9 +191,11 @@ $ portscope ps
 
 ```bash
 portscope clean         # Kill orphaned/zombie dev servers
-portscope watch         # Monitor port changes in real-time
+portscope watch         # Monitor port changes in real-time (with live traffic metrics)
 portscope chat          # Jump directly into AI chat mode
 ```
+
+**Watch mode** displays active connection counts and request rates (req/s) for each port in real-time, helping identify load issues and monitor live traffic without additional tools.
 
 > [!TIP]
 > Aliases `ports` and `whoisonport` also work: `ports kill 3000`, `whoisonport 8080`
@@ -210,8 +212,11 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 |----------|--------------|:---:|--------------|
 | **Anthropic** | `claude-haiku-4-5` | curated list | `ANTHROPIC_API_KEY` |
 | **OpenAI** | `gpt-5-nano` | curated list | `OPENAI_API_KEY` |
+| **Google Gemini** | `gemini-2.5-flash` | curated list | `GEMINI_API_KEY` |
 | **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✓ live browse | `OPENROUTER_API_KEY` |
 | **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✓ live browse | `NVIDIA_API_KEY` |
+| **Cerebras** | `llama3.3-70b` | curated list | `CEREBRAS_API_KEY` |
+| **Groq** | `llama-3.3-70b-versatile` | curated list | `GROQ_API_KEY` |
 | **Ollama (Local)** | `llama3` | ✓ local list | *none — runs locally* |
 
 ### Setup
@@ -231,6 +236,10 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 | `/models` | Browse and select a model (live listing for OpenRouter & NVIDIA NIM) |
 | `/model <name>` | Set model directly |
 | `/status` | Show current provider, model, and key status |
+| `/usage` | Display token consumption and estimated session costs |
+| `/history` | List saved conversation sessions |
+| `/load <n>` | Restore a previous conversation session |
+| `/export [md\|html\|txt]` | Export current conversation to file |
 | `/clear` | Reset conversation history |
 | `/help` | List all commands |
 
@@ -242,10 +251,13 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 Set in `.env` (project root), `~/.portscope/.env`, or shell environment:
 
 ```bash
-ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-OPENROUTER_API_KEY=sk-or-...
-NVIDIA_API_KEY=nvapi-...
+ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
+GEMINI_API_KEY=...
+OPENROUTER_API_KEY=...
+NVIDIA_API_KEY=...
+CEREBRAS_API_KEY=...
+GROQ_API_KEY=...
 ```
 
 Provider is selected interactively via `/provider` — no env var needed.
@@ -312,39 +324,105 @@ PortScope automatically detects 40+ frameworks by analyzing process commands, po
 ## Architecture
 
 ```mermaid
-graph TD
-    A[CLI Entry<br/>src/index.js] --> B[Commands]
-    B --> C[list / inspect / kill / clean / logs / watch / ps]
-    B --> D[chat / interactive]
+graph TB
+    subgraph CLI_Entry_Point["CLI Entry Point"]
+        CLI([src/index.js<br/>Command Router])
+    end
 
-    C --> E[Scanner Layer]
-    E --> E1[ports.js]
-    E --> E2[process.js]
-    E --> E3[framework.js]
-    E --> E4[logs.js]
-    E1 --> F[Platform Layer]
-    F --> F1[darwin.js]
-    F --> F2[linux.js]
-    F --> F3[win32.js]
+    subgraph Command_Layer["Command Layer"]
+        DIRECT[Direct Commands<br/>list · inspect · kill<br/>clean · logs · watch · ps]
+        INTERACTIVE{{Interactive Mode<br/>REPL + AI Chat}}
+    end
 
-    C --> G[UI Layer]
-    G --> G1[tables.js]
-    G --> G2[detail.js]
-    G --> G3[banner.js]
-    G --> G4[markdown.js]
+    subgraph Scanner_Layer["Scanner Layer - System Introspection"]
+        PORTS[Port Scanner<br/>lsof TCP listeners]
+        PROCESS[Process Info<br/>ps batch queries]
+        FRAMEWORK[Framework Detection<br/>package.json · Docker images]
+        ENV[Environment Detection<br/>NODE_ENV · process flags]
+        LOGS[Log Discovery<br/>lsof file descriptors]
+    end
 
-    D --> H[AI Layer]
-    H --> H1[conversation.js]
-    H --> H2[client.js]
-    H --> H3[executor.js]
-    H --> H4[tools.js]
-    H2 --> I[Anthropic / OpenAI / OpenRouter / NVIDIA NIM]
-    H2 --> I2[Ollama Local]
+    subgraph Platform_Abstraction["Platform Abstraction"]
+        PLATFORM([Platform Layer<br/>darwin · linux · win32])
+        SYSCALLS[System Calls<br/>lsof · ps · docker · git]
+    end
 
-    A --> J[Config Layer]
-    J --> J1[loader.js]
-    J --> J2[schema.js]
-    J --> J3[models.js]
+    subgraph AI_Orchestration["AI Orchestration"]
+        CONVERSATION{{Conversation Manager<br/>message history · tool routing}}
+        CLIENT[Multi-Provider Client<br/>Anthropic · OpenAI · Gemini<br/>OpenRouter · NVIDIA · Cerebras<br/>Groq · Ollama]
+        EXECUTOR[Tool Executor<br/>permission checks · execution]
+        TOOLS[Tool Definitions<br/>list_ports · kill_process<br/>inspect_port · clean_orphaned]
+        USAGE[Usage Tracking<br/>tokens · cost estimation]
+        HISTORY[Conversation History<br/>save · load · export]
+    end
+
+    subgraph UI_Rendering["UI Rendering"]
+        TABLES[Table Renderer<br/>cli-table3 · rounded borders]
+        MARKDOWN[Markdown Renderer<br/>bold · code · tables]
+        SPINNER[Animated Spinner<br/>3×3 grid · action verbs]
+        GHOST[Autocomplete<br/>fish-style suggestions]
+    end
+
+    subgraph Configuration["Configuration"]
+        CONFIG[Config Loader<br/>portscope.config.json<br/>~/.portscope/]
+        SCHEMA[Provider Schema<br/>defaults · validation]
+    end
+
+    CLI --> DIRECT
+    CLI --> INTERACTIVE
+    
+    DIRECT --> PORTS
+    DIRECT --> PROCESS
+    DIRECT --> LOGS
+    
+    INTERACTIVE --> CONVERSATION
+    INTERACTIVE --> DIRECT
+    
+    CONVERSATION --> CLIENT
+    CONVERSATION --> EXECUTOR
+    CLIENT --> TOOLS
+    EXECUTOR --> PORTS
+    EXECUTOR --> PROCESS
+    EXECUTOR --> LOGS
+    
+    PORTS --> FRAMEWORK
+    PORTS --> ENV
+    PORTS --> PLATFORM
+    PROCESS --> PLATFORM
+    LOGS --> PLATFORM
+    
+    PLATFORM --> SYSCALLS
+    
+    DIRECT --> TABLES
+    INTERACTIVE --> MARKDOWN
+    INTERACTIVE --> GHOST
+    CONVERSATION --> SPINNER
+    CONVERSATION --> USAGE
+    CONVERSATION --> HISTORY
+    
+    CLI --> CONFIG
+    CONVERSATION --> CONFIG
+    CONFIG --> SCHEMA
+
+    %% Rounded nodes
+    classDef rounded rx:12,ry:12;
+    class CLI,DIRECT,INTERACTIVE,PORTS,PROCESS,FRAMEWORK,ENV,LOGS,PLATFORM,SYSCALLS,CONVERSATION,CLIENT,EXECUTOR,TOOLS,USAGE,HISTORY,TABLES,MARKDOWN,SPINNER,GHOST,CONFIG,SCHEMA rounded;
+
+    %% Subgraph styling (pseudo-transparent)
+    style CLI_Entry_Point fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style Command_Layer fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style Scanner_Layer fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style Platform_Abstraction fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style AI_Orchestration fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style UI_Rendering fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    style Configuration fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+
+    %% Highlighted nodes
+    style CLI fill:#4a9eff,stroke:#2563eb,color:#fff
+    style INTERACTIVE fill:#8b5cf6,stroke:#7c3aed,color:#fff
+    style CONVERSATION fill:#ec4899,stroke:#db2777,color:#fff
+    style PLATFORM fill:#10b981,stroke:#059669,color:#fff
+    style SYSCALLS fill:#f59e0b,stroke:#d97706,color:#fff
 ```
 
 

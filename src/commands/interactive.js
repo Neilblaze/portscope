@@ -12,7 +12,9 @@ import { pauseCommand, resumeCommand } from "./pause.js";
 import { handleSlashCommand, processConversation } from "../ai/conversation.js";
 import { saveConversation } from "../ai/history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
-/** Slash commands for tab-completion */
+import { createGhostTextInterface } from "../ui/ghost-text.js";
+
+
 const SLASH_COMMANDS = [
   { name: "/provider", desc: "Switch AI provider" },
   { name: "/models", desc: "Browse models" },
@@ -44,31 +46,33 @@ export async function interactiveMode(showAll) {
   const messages = [];
   const state = { config, apiKey };
 
-  console.log(chalk.gray("  ─────────────────────────────────────────────────────────────────────────────"));
+  console.log(chalk.gray("  ╭─────────────────────────────────────────────────────────────────────────────●"));
   if (apiKey) {
     console.log(
-      chalk.dim("  💡 Ask anything — ") +
+      chalk.gray("  ╰─") +
+      chalk.dim("💡 Ask anything — ") +
       chalk.dim.italic("\"what's hogging port 3000?\"") +
-      chalk.dim(" — or use a direct command below."),
+      chalk.dim(", or use a direct command below."),
     );
   } else {
     console.log(
-      chalk.dim("  💡 Use direct commands below, or ") +
+      chalk.gray("  ╰─") +
+      chalk.dim("💡 Use direct commands below, or ") +
       chalk.cyan("/provider") +
       chalk.dim(" to enable AI natural language."),
     );
   }
   console.log(
-    chalk.dim("     ") +
-    chalk.cyan("kill <port>") + chalk.dim(" · ") +
+    chalk.dim("      ") +
+    chalk.cyan(" kill <port>") + chalk.dim(" · ") +
     chalk.cyan("pause <port>") + chalk.dim(" · ") +
     chalk.cyan("resume <port>") + chalk.dim(" · ") +
     chalk.cyan("ps") + chalk.dim(" · ") +
     chalk.cyan("logs <port>")
   );
   console.log(
-    chalk.dim("     ") +
-    chalk.cyan("clean") + chalk.dim(" · ") +
+    chalk.dim("      ") +
+    chalk.cyan(" clean") + chalk.dim(" · ") +
     chalk.cyan("watch") + chalk.dim(" · ") +
     chalk.cyan("<port>") + chalk.dim(" (inspect) · ") +
     chalk.cyan("help") + chalk.dim(" · ") +
@@ -76,7 +80,7 @@ export async function interactiveMode(showAll) {
   );
   console.log();
 
-  const rl = createInterface({
+  const rl = createGhostTextInterface({
     input: process.stdin,
     output: process.stdout,
     completer: slashCompleter,
@@ -93,10 +97,16 @@ export async function interactiveMode(showAll) {
   process.stdout.write("\x1b[1A\x1b[2K");
 
   const prompt = () => {
+    if (rl.closed) {
+      return;
+    }
+    
     rl.question(promptPrefix, async (input) => {
       const trimmed = input.trim();
       if (!trimmed) {
-        prompt();
+        if (!rl.closed) {
+          prompt();
+        }
         return;
       }
 
@@ -112,13 +122,17 @@ export async function interactiveMode(showAll) {
           rl.close();
           return;
         }
-        prompt();
+        if (!rl.closed) {
+          prompt();
+        }
         return;
       }
 
       const handled = await handleDirectCommand(trimmed, rl);
       if (handled) {
-        prompt();
+        if (!rl.closed) {
+          prompt();
+        }
         return;
       }
 
@@ -139,7 +153,9 @@ export async function interactiveMode(showAll) {
         );
         console.log(chalk.dim("  Type ") + chalk.cyan("help") + chalk.dim(" or ") + chalk.cyan("/help") + chalk.dim(" for the full command list."));
         console.log();
-        prompt();
+        if (!rl.closed) {
+          prompt();
+        }
         return;
       }
 
@@ -172,7 +188,9 @@ export async function interactiveMode(showAll) {
       } catch (err) {
         console.log(chalk.red(`\n  Error: ${err.message}\n`));
       }
-      prompt();
+      if (!rl.closed) {
+        prompt();
+      }
     });
   };
 
@@ -180,10 +198,7 @@ export async function interactiveMode(showAll) {
   await new Promise((resolve) => rl.on("close", resolve));
 }
 
-/**
- * Tab-completion for slash commands.
- * When user types "/" and presses Tab, shows matching commands.
- */
+// Tab-completion for slash commands
 function slashCompleter(line) {
   const trimmed = line.trimStart();
 
@@ -218,7 +233,6 @@ async function handleDirectCommand(input, rl) {
   const CONJUNCTIONS = /\b(and\s+then|and\s+also|and\s+show|and\s+kill|and\s+list|then\s+show|then\s+kill|then\s+list|also\s+show|also\s+kill|also\s+list|\band\b.*\b(?:show|kill|list|inspect|clean|watch|pause|resume|logs|ps)\b)\b/i;
   const COMMAND_WORDS = new Set(["kill", "ps", "clean", "logs", "watch", "pause", "resume", "inspect", "list", "ports", "help"]);
   if (COMMAND_WORDS.has(cmd) && parts.length > 2 && CONJUNCTIONS.test(input)) {
-    // Falls through to AI for compound resolution
     return false;
   }
 
@@ -332,8 +346,8 @@ async function handleDirectCommand(input, rl) {
 // NOTE: Maybe I'll add some more commands/options here.
 function printInteractiveHelp() {
   console.log();
-  console.log(chalk.cyan.bold("  Direct Commands") + chalk.dim("  (no AI needed)"));
-  console.log(chalk.gray("  ─────────────────────────────────────────"));
+  console.log(chalk.rgb(255, 140, 0).bold("  Direct Commands") + chalk.dim("  (no AI needed)"));
+  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("<port>")}           Inspect a specific port`);
   console.log(`  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`);
   console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
@@ -345,8 +359,8 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`);
   console.log(`  ${chalk.cyan("watch")}            Monitor port changes`);
   console.log();
-  console.log(chalk.cyan.bold("  AI & Config"));
-  console.log(chalk.gray("  ─────────────────────────────────────────"));
+  console.log(chalk.rgb(255, 140, 0).bold("  AI & Config"));
+  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("/provider")}        Switch AI provider & add API key`);
   console.log(`  ${chalk.cyan("/models")}          Browse and select a model`);
   console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
@@ -354,8 +368,8 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("/usage")}           Show token usage & estimated cost`);
   console.log(`  ${chalk.cyan("/clear")}           Reset conversation history`);
   console.log();
-  console.log(chalk.cyan.bold("  History & Export"));
-  console.log(chalk.gray("  ─────────────────────────────────────────"));
+  console.log(chalk.rgb(255, 140, 0).bold("  History & Export"));
+  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("/history")}         List previous conversations`);
   console.log(`  ${chalk.cyan("/history <n>")}     Preview a conversation`);
   console.log(`  ${chalk.cyan("/load <n>")}        Restore a previous conversation`);

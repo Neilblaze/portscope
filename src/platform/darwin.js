@@ -171,3 +171,32 @@ export function getProcessTree(pid) {
   } catch { }
   return tree;
 }
+
+/**
+ * Get connection counts for all listening ports
+ * Returns a Map of port -> connection count
+ */
+export function getConnectionCounts() {
+  const connectionMap = new Map();
+  try {
+    // Get all TCP connections (ESTABLISHED state)
+    const raw = execSync("lsof -iTCP -sTCP:ESTABLISHED -P -n 2>/dev/null", {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+
+    const lines = raw.trim().split("\n").slice(1);
+    for (const line of lines) {
+      const parts = line.split(/\s+/);
+      if (parts.length < 9) continue;
+
+      const localAddr = parts[8];
+      const portMatch = localAddr.match(/:(\d+)$/);
+      if (!portMatch) continue;
+      const port = parseInt(portMatch[1], 10);
+
+      connectionMap.set(port, (connectionMap.get(port) || 0) + 1);
+    }
+  } catch { }
+  return connectionMap;
+}

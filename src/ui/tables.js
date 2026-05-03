@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import Table from "cli-table3";
-import { formatFramework, formatStatus } from "./format.js";
+import { formatFramework, formatStatus, formatEnvironment } from "./format.js";
 import { renderBanner } from "./banner.js";
 
 const TABLE_CHARS = {
@@ -54,6 +54,7 @@ export function displayPortTable(ports, filtered = false, showBanner = true) {
       chalk.rgb(100, 200, 255).bold("PID"),
       chalk.rgb(100, 200, 255).bold("PROJECT"),
       chalk.rgb(100, 200, 255).bold("FRAMEWORK"),
+      chalk.rgb(100, 200, 255).bold("ENV"),
       chalk.rgb(100, 200, 255).bold("UPTIME"),
       chalk.rgb(100, 200, 255).bold("STATUS"),
     ],
@@ -66,6 +67,7 @@ export function displayPortTable(ports, filtered = false, showBanner = true) {
       chalk.gray(String(p.pid)),
       p.projectName ? chalk.blue(p.projectName) : chalk.gray("—"),
       formatFramework(p.framework),
+      formatEnvironment(p.environment),
       p.uptime ? chalk.yellow(p.uptime) : chalk.gray("—"),
       formatStatus(p.status),
     ]);
