@@ -146,8 +146,6 @@ All notable changes to PortScope will be documented in this file.
 - Terminal now clears npm's noisy header (`> portscope@1.0.0 dev`) on interactive startup
 
 ### Changed
-- Renamed from `port-whisperer` to `portscope`
-- Primary command is now `portscope` (aliases `ports`, `whoisonport` still work)
 - Full process names — uses `ps` command path to resolve lsof's 9-char truncation on macOS
 - NVIDIA NIM default model changed to `deepseek-ai/deepseek-v4-flash`
 - System prompt: direct/professional tone, always uses markdown tables for structured data, no generic pleasantries

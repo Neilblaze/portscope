@@ -44,7 +44,7 @@ export function Hero() {
             className="w-full rounded-lg border border-border/50 bg-background shadow-sm"
             poster="https://res.cloudinary.com/dmlwye965/image/upload/v1777225620/portscope_logo_taf1id.png"
           >
-            <source src="https://res.cloudinary.com/dmlwye965/video/upload/v1777251566/demo_portscope_vs5fhk.mp4" type="video/mp4" />
+            <source src="https://res.cloudinary.com/dmlwye965/video/upload/v1777850577/clipdemo_n4bykb.mp4" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>

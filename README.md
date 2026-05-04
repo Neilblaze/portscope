@@ -39,7 +39,7 @@ Eliminate the operational friction of diagnosing port collisions and orphaned wo
 
 <div align="center">
 
-https://github.com/user-attachments/assets/34940a50-cc58-4295-a52f-c9738af67289
+https://github.com/user-attachments/assets/a9bc00e9-38dd-4257-b4f5-78b4b6348c33
 
 PortScope stays alive after showing your ports — type commands, ask questions in natural language, or use `/help` for the full command list.
 </div>
@@ -428,7 +428,7 @@ graph TB
 
 
 > [!NOTE]
-> **Platform Support:** PortScope provides native OS-level observability and is fully validated across  macOS, Linux, and Windows environments.
+> PortScope provides native OS-level observability and is fully validated across  macOS, Linux, and Windows environments.
 
 ---
 
