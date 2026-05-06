@@ -321,6 +321,12 @@ PortScope automatically detects 40+ frameworks by analyzing process commands, po
 
 ---
 
+## Flow
+
+![flow-image](https://res.cloudinary.com/dmlwye965/image/upload/v1778088782/image_kmcq2r.png)
+
+---
+
 ## Architecture
 
 ```mermaid
