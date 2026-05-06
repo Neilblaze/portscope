@@ -13,6 +13,7 @@ import { handleSlashCommand, processConversation } from "../ai/conversation.js";
 import { saveConversation } from "../ai/history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
 import { createGhostTextInterface } from "../ui/ghost-text.js";
+import { sanitizeError } from "../config/sanitize-error.js";
 
 
 const SLASH_COMMANDS = [
@@ -186,7 +187,7 @@ export async function interactiveMode(showAll) {
         await processConversation(state.config, state.apiKey, messages, rl);
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       if (!rl.closed) {
         prompt();
@@ -242,7 +243,7 @@ async function handleDirectCommand(input, rl) {
     try {
       await inspectCommand(portNum);
     } catch (err) {
-      console.log(chalk.red(`\n  Error: ${err.message}\n`));
+      console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
     }
     return true;
   }
@@ -255,7 +256,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await killCommand(parts, rl);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -264,7 +265,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await psCommand(parts.includes("--all") || parts.includes("-a"), false);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -272,7 +273,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await cleanCommand(rl);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -280,7 +281,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await logsCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -288,7 +289,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await watchCommand();
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -296,7 +297,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await pauseCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -304,7 +305,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await resumeCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 
@@ -313,7 +314,7 @@ async function handleDirectCommand(input, rl) {
         try {
           await inspectCommand(parseInt(parts[1], 10));
         } catch (err) {
-          console.log(chalk.red(`\n  Error: ${err.message}\n`));
+          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
         }
       } else {
         console.log(chalk.gray("  Usage: inspect <port>"));
@@ -328,7 +329,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await listCommand(parts.includes("--all") || parts.includes("-a"), false);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       return true;
 

@@ -11,6 +11,7 @@ import { helpCommand } from "./commands/help.js";
 import { chatCommand } from "./commands/chat.js";
 import { pauseCommand, resumeCommand } from "./commands/pause.js";
 import { interactiveMode } from "./commands/interactive.js";
+import { sanitizeError } from "./config/sanitize-error.js";
 import chalk from "chalk";
 
 const args = process.argv.slice(2);
@@ -76,6 +77,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(chalk.red(`\n  Error: ${err.message}\n`));
+  console.error(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
   process.exitCode = 1;
 });

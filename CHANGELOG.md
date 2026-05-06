@@ -10,11 +10,17 @@ All notable changes to PortScope will be documented in this file.
 - **Added Autocomplete Suggestions** — Implemented intelligent autocomplete suggestions for slash commands and direct commands as you type, similar to fish shell's autosuggestions. Press right arrow or Ctrl+E to accept suggestions. No third-party dependencies required.
 - **Enhanced Help UI** — Updated help text section headers with vibrant orange color (`rgb(255, 140, 0)`) for better visual hierarchy and improved readability. Sections "Direct Commands", "AI & Config", and "History & Export" now stand out prominently.
 - **Comprehensive Environment Detection** — Supports 15+ frameworks including Node.js (Next.js, Vite, Nuxt), Python (Django, Flask, FastAPI), Ruby (Rails), and detects from environment variables (`NODE_ENV`, `RAILS_ENV`, `DJANGO_SETTINGS_MODULE`), command-line flags (`--env=`, `--mode=`, `--production`), and process patterns (npm scripts, nodemon, pm2, gunicorn).
+- **API Key Masking** — Enhanced security by automatically masking API keys when displayed in the CLI. Keys now show only the first 5 and last 4 characters (e.g., `sk-12***************mnop`), preventing exposure during screen sharing, screenshots, or shoulder surfing. Applies to all cloud providers (Anthropic, OpenAI, Gemini, OpenRouter, NVIDIA, Cerebras, Groq) while preserving "local" for Ollama. Visible in `/provider` setup flow and `/status` command output.
+- **Provider Switch Confirmation** — Added safety warning when switching AI providers mid-conversation. Users are now prompted to confirm before switching, preventing accidental loss of conversation history. The warning displays when active messages exist and offers the option to cancel. Upon confirmation, conversation history is automatically cleared and usage metrics are reset.
+- **Error Sanitization** — Implemented comprehensive error message sanitization to prevent sensitive data leakage in logs and error displays. Automatically redacts API keys, Bearer tokens, Authorization headers, JWT tokens, base64-encoded credentials, and long hex strings from all error messages. Protects against accidental exposure of secrets in error logs, stack traces, and console output.
 
 ### Changed
 - **Command Alignment** — Improved visual alignment in interactive mode so command shortcuts align perfectly with the "Ask" text above for better readability.
-- **Test Suite Expansion** — Expanded test coverage from 120 to 172 tests, adding 31 environment detection tests, 7 format tests, and 14 ghost text suggestion tests. All tests passing with zero failures.
+- **Test Suite Expansion** — Expanded test coverage from 120 to 207 tests, adding 31 environment detection tests, 7 format tests, 14 ghost text suggestion tests, 10 API key masking tests, 4 provider switch confirmation tests, and 21 error sanitization tests. All tests passing with zero failures.
 - **Enhanced Watch Mode Alignment** — All columns in watch mode now align perfectly with right-aligned numeric values. Process names are left-padded to a consistent width, connection counts and request rates stack vertically, and separators line up across all rows for improved readability.
+- **Improved Status Display** — The `/status` command now shows masked API keys with enhanced formatting, displaying a checkmark with the masked key for configured providers, "✓ local" for Ollama, and "✕ missing" for unconfigured providers.
+- **Safer Provider Switching** — Switching AI providers now requires explicit confirmation when an active conversation exists, preventing accidental data loss. Conversation history and usage metrics are automatically cleared after confirmation.
+- **Secure Error Handling** — All error messages throughout the application are now automatically sanitized before display, preventing accidental exposure of API keys, tokens, and other sensitive credentials in error logs and console output.
 
 ### Fixed
 - **Watch Command Ctrl+C Crash** — Resolved critical bug where pressing Ctrl+C in watch mode would cause `ERR_USE_AFTER_CLOSE` readline error. Fixed by using `process.once()` instead of `process.on()` for SIGINT handlers and adding readline state checks before prompting. Watch command now exits cleanly without crashes.
@@ -22,9 +28,11 @@ All notable changes to PortScope will be documented in this file.
 - **Readline State Management** — Added defensive checks (`!rl.closed`) in 5 critical locations throughout the interactive prompt loop to prevent attempting operations on closed readline interfaces.
 
 ### Technical
-- **New Modules**: `src/scanner/environment.js` (350 lines), `src/ui/ghost-text.js` (290 lines)
-- **New Tests**: `tests/environment.test.js` (31 tests), `tests/format.test.js` (7 tests), `tests/ghost-text.test.js` (14 tests)
+- **New Modules**: `src/scanner/environment.js` (350 lines), `src/ui/ghost-text.js` (290 lines), `src/config/mask.js` (25 lines), `src/config/sanitize-error.js` (70 lines)
+- **New Tests**: `tests/environment.test.js` (31 tests), `tests/format.test.js` (7 tests), `tests/ghost-text.test.js` (14 tests), `tests/mask.test.js` (10 tests), `tests/provider-switch.test.js` (4 tests), `tests/sanitize-error.test.js` (21 tests)
 - **Cross-Platform**: Environment detection works on Linux (reads `/proc/<pid>/environ`), macOS (uses `ps eww`), and Windows (limited support via `wmic`)
+- **Security**: API keys stored in `~/.portscope/.env` with file permissions set to `0o600` (read/write owner only). All error messages automatically sanitized to prevent credential leakage. Supports redaction of API keys (sk-*, api_*, key_*), Bearer tokens, Authorization headers, JWT tokens, base64 credentials, and hex strings.
+- **UX Enhancement**: Provider switching now includes conversation state validation and automatic cleanup
 
 ## [1.4.0] - 2026-04-29
 

@@ -6,6 +6,8 @@ import { TOOLS } from "./tools.js";
 import { PROVIDER_DEFAULTS, PROVIDER_IDS } from "../config/schema.js";
 import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice } from "../config/loader.js";
 import { fetchAvailableModels, validateApiKey } from "../config/models.js";
+import { maskApiKey } from "../config/mask.js";
+import { sanitizeError } from "../config/sanitize-error.js";
 import { renderMarkdown } from "../ui/markdown.js";
 import { startSpinner } from "../ui/spinner.js";
 import { staggerPrint, flashSuccess } from "../ui/animate.js";
@@ -123,7 +125,7 @@ export async function startChat(config, apiKey) {
         await processConversation(state.config, state.apiKey, messages, rl);
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${err.message}\n`));
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
 
       prompt();
@@ -160,7 +162,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
 
     case "provider":
     case "providers":
-      await switchProvider(state, rl);
+      await switchProvider(state, rl, messages);
       return;
 
     case "models":
@@ -251,7 +253,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
           const filepath = exportConversation(conv, format);
           console.log(chalk.green(`\n  ✓ Exported to ${chalk.bold(filepath)}\n`));
         } catch (err) {
-          console.log(chalk.red(`\n  Export failed: ${err.message}\n`));
+          console.log(chalk.red(`\n  Export failed: ${sanitizeError(err)}\n`));
         }
       }
       return;
@@ -330,7 +332,13 @@ function printStatus(state) {
   console.log(chalk.gray("  ─────────────────────────────────"));
   console.log(`  ${chalk.gray("Provider")}    ${chalk.white.bold(provider?.label || state.config.ai.provider)}`);
   console.log(`  ${chalk.gray("Model")}       ${chalk.white.bold(state.config.ai.model || "not set")}`);
-  console.log(`  ${chalk.gray("API Key")}     ${state.apiKey ? chalk.green("✓ configured") : chalk.red("✕ missing")}`);
+  if (state.apiKey && state.apiKey !== "local") {
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✓")} ${chalk.dim(maskApiKey(state.apiKey))}`);
+  } else if (state.apiKey === "local") {
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✓ local")}`);
+  } else {
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.red("✕ missing")}`);
+  }
   console.log(`  ${chalk.gray("Max Tokens")}  ${chalk.white(state.config.ai.maxTokens)}`);
   console.log();
 }
@@ -338,7 +346,19 @@ function printStatus(state) {
 
 
 
-async function switchProvider(state, rl) {
+async function switchProvider(state, rl, messages = []) {
+  if (messages.length > 0) {
+    console.log();
+    console.log(chalk.yellow("  ⚠ Warning: Switching providers will reset conversation history"));
+    console.log(chalk.dim("  Your current conversation will be lost unless you export it first."));
+    console.log();
+    const confirm = await question(rl, chalk.yellow("  Continue? [y/N] "));
+    if (confirm.trim().toLowerCase() !== "y") {
+      console.log(chalk.gray("  Cancelled!\n"));
+      return;
+    }
+  }
+
   console.log();
   console.log(chalk.cyan.bold("  Select a Provider"));
   console.log(chalk.gray("  ─────────────────────────────────"));
@@ -402,7 +422,7 @@ async function switchProvider(state, rl) {
       if (err.cause?.code === "ECONNREFUSED" || err.name === "TimeoutError") {
         console.log(chalk.red(`  ✕ Cannot connect to Ollama at ${endpoint}`));
       } else {
-        console.log(chalk.red(`  ✕ ${err.message}`));
+        console.log(chalk.red(`  ✕ ${sanitizeError(err)}`));
       }
       console.log(chalk.gray("  Make sure Ollama is running: ollama serve\n"));
       return;
@@ -434,10 +454,16 @@ async function switchProvider(state, rl) {
     }
 
     console.log(chalk.green("  ✓ API key validated!"));
+    console.log(chalk.dim(`  Key: ${maskApiKey(key.trim())}`));
 
     saveApiKey(provider, key.trim());
     apiKey = key.trim();
     console.log(chalk.gray(`  Saved to ~/.portscope/.env\n`));
+  } else {
+    console.log();
+    console.log(chalk.green(`  ✓ API key already configured for ${defaults.label}`));
+    console.log(chalk.dim(`  Key: ${maskApiKey(apiKey)}`));
+    console.log();
   }
 
   state.config.ai.provider = provider;
@@ -445,6 +471,12 @@ async function switchProvider(state, rl) {
   state.apiKey = apiKey;
   resetConfig();
   persistProviderChoice(provider, defaults.model, provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
+
+  if (messages.length > 0) {
+    messages.length = 0;
+    resetUsage();
+    console.log(chalk.dim("  Conversation history cleared."));
+  }
 
   console.log(
     chalk.green(`  ✓ Switched to ${chalk.bold(defaults.label)}`) +

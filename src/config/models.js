@@ -1,4 +1,5 @@
 import { PROVIDER_DEFAULTS } from "./schema.js";
+import { sanitizeError } from "./sanitize-error.js";
 
 // NOTE: Needs to be updated when new models are released
 // Or, maybe I should automate this? 🤔 ... nvm, will do later
@@ -114,7 +115,7 @@ export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint) {
     if (err.name === "TimeoutError") {
       return { models: [], error: `Timed out connecting to ${defaults.label}` };
     }
-    return { models: [], error: `Failed to fetch models: ${err.message}` };
+    return { models: [], error: `Failed to fetch models: ${sanitizeError(err)}` };
   }
 }
 
@@ -141,7 +142,7 @@ async function fetchOllamaModels(ollamaEndpoint) {
     if (err.cause?.code === "ECONNREFUSED" || err.name === "TimeoutError") {
       return { models: [], error: `Cannot connect to Ollama at ${endpoint}. Is it running?` };
     }
-    return { models: [], error: `Failed to list Ollama models: ${err.message}` };
+    return { models: [], error: `Failed to list Ollama models: ${sanitizeError(err)}` };
   }
 }
 
