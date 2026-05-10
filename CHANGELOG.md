@@ -2,6 +2,11 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.5.1] - 2026-05-11
+
+### Fixed
+- **Invalid API Key Error** - Fixed a bug where the CLI would crash when an invalid API key was provided for an AI provider. The CLI now prompts the user to clear the invalid API key and restart the CLI.
+
 ## [1.5.0] - 2026-05-10
 
 ### Added
