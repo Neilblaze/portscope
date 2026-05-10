@@ -2,7 +2,7 @@
 
 All notable changes to PortScope will be documented in this file.
 
-## [1.5.0] - 2026-05-03
+## [1.5.0] - 2026-05-10
 
 ### Added
 - **Environment Detection** — PortScope now automatically detects and displays the runtime environment (development, production, test, staging) for each process. Added new `ENV` column in the port table between `FRAMEWORK` and `UPTIME`, showing color-coded environment indicators: green (dev), yellow (prod), blue (test), magenta (stage).
@@ -20,9 +20,12 @@ All notable changes to PortScope will be documented in this file.
 - **Enhanced Watch Mode Alignment** — All columns in watch mode now align perfectly with right-aligned numeric values. Process names are left-padded to a consistent width, connection counts and request rates stack vertically, and separators line up across all rows for improved readability.
 - **Improved Status Display** — The `/status` command now shows masked API keys with enhanced formatting, displaying a checkmark with the masked key for configured providers, "✓ local" for Ollama, and "✕ missing" for unconfigured providers.
 - **Safer Provider Switching** — Switching AI providers now requires explicit confirmation when an active conversation exists, preventing accidental data loss. Conversation history and usage metrics are automatically cleared after confirmation.
+- **UI Aesthetics** — Replaced the legacy 3x3 dot grid spinner with a sleek single-line braille spinner and added a dynamic ghost text shimmer effect to the AI loading verb for a more premium feel.
 - **Secure Error Handling** — All error messages throughout the application are now automatically sanitized before display, preventing accidental exposure of API keys, tokens, and other sensitive credentials in error logs and console output.
 
 ### Fixed
+- **Markdown Table Alignment** — Resolved a visual bug where terminal table borders were misaligned by 2 spaces due to inconsistent padding logic between the markdown renderer and the interactive console loop.
+- **Model Selection Persistence** — Fixed a bug where selecting an AI model via the interactive `/model` paginated list failed to save the choice to the configuration file, causing the CLI to revert to the previous model upon restart.
 - **Watch Command Ctrl+C Crash** — Resolved critical bug where pressing Ctrl+C in watch mode would cause `ERR_USE_AFTER_CLOSE` readline error. Fixed by using `process.once()` instead of `process.on()` for SIGINT handlers and adding readline state checks before prompting. Watch command now exits cleanly without crashes.
 - **SIGINT Handler Conflicts** — Eliminated conflicting SIGINT handlers between interactive mode and watch command that caused readline interface to close prematurely. Added proper cleanup with `process.off()` to remove handlers after use.
 - **Readline State Management** — Added defensive checks (`!rl.closed`) in 5 critical locations throughout the interactive prompt loop to prevent attempting operations on closed readline interfaces.

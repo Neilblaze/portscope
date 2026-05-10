@@ -5,15 +5,15 @@ import { renderMarkdown } from "../src/ui/markdown.js";
 
 describe("renderMarkdown", () => {
   it("renders bold text", () => {
-    assert.equal(renderMarkdown("**hello**"), chalk.bold("hello"));
+    assert.equal(renderMarkdown("**hello**"), "  " + chalk.bold("hello"));
   });
 
   it("renders italic text", () => {
-    assert.equal(renderMarkdown("*hello*"), chalk.italic("hello"));
+    assert.equal(renderMarkdown("*hello*"), "  " + chalk.italic("hello"));
   });
 
   it("renders code blocks and inline code", () => {
-    assert.equal(renderMarkdown("`code`"), chalk.cyan("code"));
+    assert.equal(renderMarkdown("`code`"), "  " + chalk.cyan("code"));
   });
 
   it("handles null or empty input", () => {
@@ -24,7 +24,7 @@ describe("renderMarkdown", () => {
 
   it("renders headers", () => {
     const result = renderMarkdown("# Title");
-    assert.ok(result.includes(chalk.bold.underline("Title")));
+    assert.ok(result.includes("  " + chalk.bold.underline("Title")));
   });
 
   it("renders lists", () => {
@@ -35,6 +35,6 @@ describe("renderMarkdown", () => {
 
   it("handles mixed formatting", () => {
     const result = renderMarkdown("Kill **PID** `1234`");
-    assert.equal(result, `Kill ${chalk.bold("PID")} ${chalk.cyan("1234")}`);
+    assert.equal(result, `  Kill ${chalk.bold("PID")} ${chalk.cyan("1234")}`);
   });
 });

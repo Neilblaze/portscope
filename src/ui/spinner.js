@@ -1,12 +1,29 @@
 import chalk from "chalk";
 
 
-const SPIRAL = [0, 1, 2, 5, 8, 7, 6, 3, 4];  // Clockwise spiral
+const BRAILLE_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const ACTIVE_COLOR = chalk.rgb(100, 255, 136);
+const FRAME_MS = 100;
 
-const ACTIVE = chalk.rgb(100, 200, 255)("▪");
-const TRAIL = chalk.rgb(60, 120, 160)("▫");
-const INACTIVE = chalk.gray("·");
-const FRAME_MS = 130;
+function getShimmerText(text, frame) {
+  const cycleLength = text.length + 15;
+  const pos = frame % cycleLength;
+
+  let result = "";
+  for (let i = 0; i < text.length; i++) {
+    const dist = Math.abs(pos - i);
+    if (dist === 0) {
+      result += chalk.white.bold(text[i]);
+    } else if (dist === 1) {
+      result += chalk.gray.bold(text[i]);
+    } else if (dist === 2) {
+      result += chalk.gray(text[i]);
+    } else {
+      result += chalk.gray.dim(text[i]);
+    }
+  }
+  return result;
+}
 
 export const SPINNER_VERBS = [
   "Accomplishing", "Actioning", "Actualizing", "Architecting", "Baking", "Beaming",
@@ -45,14 +62,13 @@ export const SPINNER_VERBS = [
 
 
 /**
- * Start an animated 3×3 dot grid spinner.
+ * Start an animated braille spinner.
  * Returns { stop() } handle to clear the spinner.
  *
  * @param {string} [label] — custom label, or a random one is picked
  */
 export function startSpinner(label) {
   if (!process.stdout.isTTY) {
-    // Non-TTY: print static text, return no-op stop
     const text = label || `${SPINNER_VERBS[0]}...`;
     process.stdout.write(chalk.gray(`\n  ${text}`));
     return {
@@ -67,21 +83,15 @@ export function startSpinner(label) {
   let rendered = false;
 
   const render = () => {
-    const dots = new Array(9).fill(INACTIVE);
-    const currentPos = SPIRAL[frame % 9];
-    const prevPos = SPIRAL[(frame - 1 + 9) % 9];
-    dots[currentPos] = ACTIVE;
-    dots[prevPos] = TRAIL;
-
-    const row1 = `  ${dots[0]}${dots[1]}${dots[2]}`;
-    const row2 = `  ${dots[3]}${dots[4]}${dots[5]}  ${chalk.gray(displayLabel)}`;
-    const row3 = `  ${dots[6]}${dots[7]}${dots[8]}`;
+    const frameChar = ACTIVE_COLOR(BRAILLE_FRAMES[frame % BRAILLE_FRAMES.length]);
+    const shimmerLabel = getShimmerText(displayLabel, frame);
+    const row = `  ${frameChar}  ${shimmerLabel}`;
 
     if (rendered) {
-      process.stdout.write("\x1b[3A\r");
+      process.stdout.write("\x1b[1A\r");
     }
 
-    process.stdout.write(`${row1}\n${row2}\n${row3}\n`);
+    process.stdout.write(`${row}\n`);
     rendered = true;
     frame++;
   };
@@ -95,12 +105,12 @@ export function startSpinner(label) {
     stop() {
       clearInterval(interval);
       if (rendered) {
-        process.stdout.write("\x1b[4A\r");
-        for (let i = 0; i < 4; i++) {
+        process.stdout.write("\x1b[2A\r");
+        for (let i = 0; i < 2; i++) {
           process.stdout.write("\x1b[2K");
-          if (i < 3) process.stdout.write("\n");
+          if (i < 1) process.stdout.write("\n");
         }
-        process.stdout.write("\x1b[3A\r");
+        process.stdout.write("\x1b[1A\r");
       }
       process.stdout.write("\x1b[?25h");
     },

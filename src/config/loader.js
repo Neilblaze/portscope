@@ -85,7 +85,6 @@ export function getApiKey(config) {
     if (!defaults.envKey) continue;
     const key = process.env[defaults.envKey];
     if (key) {
-      // Auto-switch to this provider
       config.ai.provider = id;
       config.ai.model = defaults.model;
       return key;
@@ -122,14 +121,12 @@ export function saveApiKey(provider, key) {
   const envPath = join(PORTSCOPE_HOME, ".env");
   let lines = [];
 
-  // Read existing
   if (existsSync(envPath)) {
     try {
       lines = readFileSync(envPath, "utf8").split("\n");
     } catch { }
   }
 
-  // Remove old entry for this key
   lines = lines.filter((line) => {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) return true;
@@ -202,7 +199,6 @@ function loadDotenv(envPath) {
 
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
-    // Guard against prototype pollution
     if (key === "__proto__" || key === "constructor" || key === "prototype") continue;
     if (
       source[key] &&

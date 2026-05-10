@@ -37,14 +37,14 @@ export function renderMarkdown(text) {
       continue;
     }
 
-    // ── Horizontal rule ──────────────────────────────────────────────
+    // Horizontal rule
     if (/^\s*([-*_])\1{2,}\s*$/.test(line)) {
       output.push(chalk.gray("  ─────────────────────────────────────────"));
       i++;
       continue;
     }
 
-    // ── Blockquote ───────────────────────────────────────────────────
+    // Blockquote
     if (/^\s*>\s?/.test(line)) {
       const content = line.replace(/^\s*>\s?/, "");
       output.push(chalk.gray("  │ ") + chalk.italic(renderInline(content)));
@@ -52,14 +52,14 @@ export function renderMarkdown(text) {
       continue;
     }
 
-    // ── Headers ──────────────────────────────────────────────────────
+    // Headers
     const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
     if (headingMatch) {
       const content = renderInline(headingMatch[2]);
       if (headingMatch[1].length === 1) {
-        output.push(chalk.bold.underline(content));
+        output.push("  " + chalk.bold.underline(content));
       } else {
-        output.push(chalk.bold(content));
+        output.push("  " + chalk.bold(content));
       }
       i++;
       continue;
@@ -74,7 +74,7 @@ export function renderMarkdown(text) {
       continue;
     }
 
-    // ── Ordered list ─────────────────────────────────────────────────
+    // Ordered list
     const olMatch = line.match(/^(\s*)\d+[.)]\s+(.*)$/);
     if (olMatch) {
       const indent = olMatch[1] || "";
@@ -84,8 +84,8 @@ export function renderMarkdown(text) {
       continue;
     }
 
-    // ── Regular line (inline formatting only) ────────────────────────
-    output.push(renderInline(line));
+    // Regular line (inline formatting only)
+    output.push(line.trim() ? "  " + renderInline(line) : "");
     i++;
   }
 

@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { createInterface } from "readline";
 import { sendMessage } from "./client.js";
 import { executeTool } from "./executor.js";
-import { TOOLS } from "./tools.js";
+import { TOOLS, DESTRUCTIVE_TOOLS } from "./tools.js";
 import { PROVIDER_DEFAULTS, PROVIDER_IDS } from "../config/schema.js";
 import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice } from "../config/loader.js";
 import { fetchAvailableModels, validateApiKey } from "../config/models.js";
@@ -494,9 +494,7 @@ async function switchProvider(state, rl, messages = []) {
 }
 
 
-/**
- * Interactive model browser.
- */
+// Browse (available) models
 async function browseModels(state, rl) {
   const provider = state.config.ai.provider;
   const apiKey = state.apiKey || getApiKeyForProvider(provider);
@@ -574,6 +572,7 @@ function selectModel(input, models, state) {
   const num = parseInt(input, 10);
   if (!isNaN(num) && num >= 1 && num <= models.length) {
     state.config.ai.model = models[num - 1].id;
+    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
     console.log(chalk.green(`  ✓ Model set to ${chalk.bold(state.config.ai.model)}\n`));
     return;
   }
@@ -583,9 +582,11 @@ function selectModel(input, models, state) {
   );
   if (match) {
     state.config.ai.model = match.id;
+    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
     console.log(chalk.green(`  ✓ Model set to ${chalk.bold(state.config.ai.model)}\n`));
   } else {
     state.config.ai.model = input;
+    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
     console.log(chalk.yellow(`  Model set to "${input}" (not in list — may still work)\n`));
   }
 }
@@ -620,11 +621,12 @@ export async function processConversation(config, apiKey, messages, rl) {
   spinner.stop();
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
 
-  // Tool calling loop — AI can make multiple rounds of tool calls
+  // Tool calling loop
+  // NOTE: AI can make multiple rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
     if (response.text) {
       const rendered = renderMarkdown(response.text);
-      console.log(`\n  ${rendered}`);
+      console.log(`\n${rendered}`);
     }
 
     messages.push({
@@ -635,9 +637,36 @@ export async function processConversation(config, apiKey, messages, rl) {
 
     const toolResults = [];
     for (const tc of response.toolCalls) {
-      console.log(chalk.dim(`  ⚡ ${tc.name}...`));
-      const result = await executeTool(tc.name, tc.input, rl);
-      toolResults.push({ id: tc.id, result });
+      // TODO: I need to fix it (it has some bugs, and not working sometimes)
+      if (process.stdout.isTTY && !DESTRUCTIVE_TOOLS.has(tc.name)) {
+        const glowFrames = [
+          chalk.dim("⚡"),
+          "⚡",
+          chalk.yellowBright("⚡"),
+          chalk.whiteBright.bold("⚡"),
+          chalk.yellowBright("⚡"),
+          "⚡"
+        ];
+        let glowIdx = 0;
+
+        process.stdout.write(`  ${chalk.dim("⚡")} ${chalk.dim(`${tc.name}...`)}`);
+
+        const interval = setInterval(() => {
+          glowIdx++;
+          const bolt = glowFrames[glowIdx % glowFrames.length];
+          process.stdout.write(`\r  ${bolt} ${chalk.dim(`${tc.name}...`)}`);
+        }, 100);
+
+        const result = await executeTool(tc.name, tc.input, rl);
+
+        clearInterval(interval);
+        process.stdout.write(`\r  ${chalk.dim("⚡")} ${chalk.dim(`${tc.name}...`)}\n`);
+        toolResults.push({ id: tc.id, result });
+      } else {
+        console.log(chalk.dim(`  ⚡ ${tc.name}...`));
+        const result = await executeTool(tc.name, tc.input, rl);
+        toolResults.push({ id: tc.id, result });
+      }
     }
 
     messages.push({ role: "user", toolResults });
@@ -657,7 +686,7 @@ export async function processConversation(config, apiKey, messages, rl) {
 
   if (response.text) {
     const rendered = renderMarkdown(response.text);
-    console.log(`\n  ${rendered}\n`);
+    console.log(`\n${rendered}\n`);
   }
 
   messages.push({ role: "assistant", text: response.text, toolCalls: [] });
