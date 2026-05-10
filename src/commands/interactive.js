@@ -18,6 +18,7 @@ import { sanitizeError } from "../config/sanitize-error.js";
 
 const SLASH_COMMANDS = [
   { name: "/provider", desc: "Switch AI provider" },
+  { name: "/revoke", desc: "Revoke a saved API key" },
   { name: "/models", desc: "Browse models" },
   { name: "/model", desc: "Set model" },
   { name: "/status", desc: "Current config" },
@@ -101,7 +102,7 @@ export async function interactiveMode(showAll) {
     if (rl.closed) {
       return;
     }
-    
+
     rl.question(promptPrefix, async (input) => {
       const trimmed = input.trim();
       if (!trimmed) {
@@ -187,6 +188,7 @@ export async function interactiveMode(showAll) {
         await processConversation(state.config, state.apiKey, messages, rl);
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
+        messages.pop();
         console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
       if (!rl.closed) {
@@ -363,6 +365,7 @@ function printInteractiveHelp() {
   console.log(chalk.rgb(255, 140, 0).bold("  AI & Config"));
   console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("/provider")}        Switch AI provider & add API key`);
+  console.log(`  ${chalk.cyan("/revoke")}          Revoke a saved API key`);
   console.log(`  ${chalk.cyan("/models")}          Browse and select a model`);
   console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
   console.log(`  ${chalk.cyan("/status")}          Show current provider & model`);

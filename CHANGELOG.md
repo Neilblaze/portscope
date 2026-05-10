@@ -13,6 +13,7 @@ All notable changes to PortScope will be documented in this file.
 - **API Key Masking** — Enhanced security by automatically masking API keys when displayed in the CLI. Keys now show only the first 5 and last 4 characters (e.g., `sk-12***************mnop`), preventing exposure during screen sharing, screenshots, or shoulder surfing. Applies to all cloud providers (Anthropic, OpenAI, Gemini, OpenRouter, NVIDIA, Cerebras, Groq) while preserving "local" for Ollama. Visible in `/provider` setup flow and `/status` command output.
 - **Provider Switch Confirmation** — Added safety warning when switching AI providers mid-conversation. Users are now prompted to confirm before switching, preventing accidental loss of conversation history. The warning displays when active messages exist and offers the option to cancel. Upon confirmation, conversation history is automatically cleared and usage metrics are reset.
 - **Error Sanitization** — Implemented comprehensive error message sanitization to prevent sensitive data leakage in logs and error displays. Automatically redacts API keys, Bearer tokens, Authorization headers, JWT tokens, base64-encoded credentials, and long hex strings from all error messages. Protects against accidental exposure of secrets in error logs, stack traces, and console output.
+- **API Key Revocation** — Added a dedicated `/revoke` command to securely remove configured API keys from local storage. The interactive flow displays active keys, requires confirmation, and gracefully resets the active provider if its key is revoked.
 
 ### Changed
 - **Command Alignment** — Improved visual alignment in interactive mode so command shortcuts align perfectly with the "Ask" text above for better readability.
@@ -29,6 +30,8 @@ All notable changes to PortScope will be documented in this file.
 - **Watch Command Ctrl+C Crash** — Resolved critical bug where pressing Ctrl+C in watch mode would cause `ERR_USE_AFTER_CLOSE` readline error. Fixed by using `process.once()` instead of `process.on()` for SIGINT handlers and adding readline state checks before prompting. Watch command now exits cleanly without crashes.
 - **SIGINT Handler Conflicts** — Eliminated conflicting SIGINT handlers between interactive mode and watch command that caused readline interface to close prematurely. Added proper cleanup with `process.off()` to remove handlers after use.
 - **Readline State Management** — Added defensive checks (`!rl.closed`) in 5 critical locations throughout the interactive prompt loop to prevent attempting operations on closed readline interfaces.
+- **Lingering Spinner on Auth Error** — Fixed a bug where the "Flowing..." spinner would linger on the console when an AI provider returned an authentication error (like an expired API key). The execution loop now properly guarantees cleanup using `try...finally` blocks.
+- **Conversation State Corruption** — Fixed a bug where an API or authentication error would leave unanswered user prompts in the conversation history. The application now intelligently removes failed user inputs from the history, allowing users to cleanly retry their prompts after fixing their credentials.
 
 ### Technical
 - **New Modules**: `src/scanner/environment.js` (350 lines), `src/ui/ghost-text.js` (290 lines), `src/config/mask.js` (25 lines), `src/config/sanitize-error.js` (70 lines)

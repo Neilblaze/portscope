@@ -4,7 +4,7 @@ import { sendMessage } from "./client.js";
 import { executeTool } from "./executor.js";
 import { TOOLS, DESTRUCTIVE_TOOLS } from "./tools.js";
 import { PROVIDER_DEFAULTS, PROVIDER_IDS } from "../config/schema.js";
-import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice } from "../config/loader.js";
+import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice, revokeApiKey } from "../config/loader.js";
 import { fetchAvailableModels, validateApiKey } from "../config/models.js";
 import { maskApiKey } from "../config/mask.js";
 import { sanitizeError } from "../config/sanitize-error.js";
@@ -125,6 +125,7 @@ export async function startChat(config, apiKey) {
         await processConversation(state.config, state.apiKey, messages, rl);
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
+        messages.pop();
         console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
 
@@ -163,6 +164,10 @@ export async function handleSlashCommand(input, state, messages, rl) {
     case "provider":
     case "providers":
       await switchProvider(state, rl, messages);
+      return;
+
+    case "revoke":
+      await revokeApiKeyFlow(state, rl);
       return;
 
     case "models":
@@ -284,6 +289,7 @@ function printSlashHelp() {
     chalk.rgb(255, 140, 0).bold("  AI & Config"),
     chalk.gray("  ──────────────────────────────────────────────────❯"),
     `  ${chalk.cyan("/provider")}        Switch AI provider & add API key`,
+    `  ${chalk.cyan("/revoke")}          Revoke a saved API key`,
     `  ${chalk.cyan("/models")}          Browse and select a model`,
     `  ${chalk.cyan("/model <name>")}    Set model directly`,
     `  ${chalk.cyan("/status")}          Show current provider & model`,
@@ -493,6 +499,61 @@ async function switchProvider(state, rl, messages = []) {
   console.log();
 }
 
+async function revokeApiKeyFlow(state, rl) {
+  const configuredProviders = [];
+  for (const id of PROVIDER_IDS) {
+    if (id === "ollama") continue;
+    const key = getApiKeyForProvider(id);
+    if (key) {
+      configuredProviders.push(id);
+    }
+  }
+
+  if (configuredProviders.length === 0) {
+    console.log(chalk.yellow("\n  No API keys found.\n"));
+    return;
+  }
+
+  console.log();
+  console.log(chalk.cyan.bold("  Revoke an API Key"));
+  console.log(chalk.gray("  ─────────────────────────────────"));
+
+  for (let i = 0; i < configuredProviders.length; i++) {
+    const id = configuredProviders[i];
+    const defaults = PROVIDER_DEFAULTS[id];
+    console.log(`  ${chalk.white.bold(i + 1)}  ${chalk.white(defaults.label)}`);
+  }
+  console.log(`  ${chalk.dim("0")}  ${chalk.dim("Cancel")}`);
+  console.log();
+
+  const answer = await question(rl, chalk.yellow(`  Pick a provider to revoke (0-${configuredProviders.length}): `));
+  const idx = parseInt(answer, 10);
+  if (isNaN(idx) || idx < 1 || idx > configuredProviders.length) {
+    if (idx !== 0) console.log(chalk.gray("  Cancelled.\n"));
+    else console.log();
+    return;
+  }
+
+  const providerToRevoke = configuredProviders[idx - 1];
+  const defaults = PROVIDER_DEFAULTS[providerToRevoke];
+
+  const confirm = await question(rl, chalk.yellow(`  Are you sure you want to revoke the ${defaults.label} API key? [y/N] `));
+  if (confirm.trim().toLowerCase() !== "y") {
+    console.log(chalk.gray("  Cancelled.\n"));
+    return;
+  }
+
+  revokeApiKey(providerToRevoke);
+  console.log(chalk.green(`  ✓ Revoked API key for ${defaults.label}\n`));
+
+  if (state.config.ai.provider === providerToRevoke) {
+    state.apiKey = null;
+    console.log(chalk.yellow(`  The API key for your current provider (${defaults.label}) has been revoked.`));
+    console.log(chalk.yellow(`  Please configure a new provider to continue using natural language.\n`));
+    await switchProvider(state, rl, []);
+  }
+}
+
 
 // Browse (available) models
 async function browseModels(state, rl) {
@@ -607,18 +668,22 @@ function question(rl, prompt) {
  * @param {import("readline").Interface} [rl] — REPL readline to reuse for y/N prompts
  */
 export async function processConversation(config, apiKey, messages, rl) {
-  const spinner = startSpinner();
-
+  let spinner = startSpinner();
+  let response;
   const t0 = Date.now();
-  let response = await sendMessage(
-    config,
-    apiKey,
-    messages,
-    TOOLS,
-    SYSTEM_PROMPT,
-  );
 
-  spinner.stop();
+  try {
+    response = await sendMessage(
+      config,
+      apiKey,
+      messages,
+      TOOLS,
+      SYSTEM_PROMPT,
+    );
+  } finally {
+    spinner.stop();
+  }
+
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
 
   // Tool calling loop
@@ -671,16 +736,19 @@ export async function processConversation(config, apiKey, messages, rl) {
 
     messages.push({ role: "user", toolResults });
 
-    const toolSpinner = startSpinner();
+    spinner = startSpinner();
     const t1 = Date.now();
-    response = await sendMessage(
-      config,
-      apiKey,
-      messages,
-      TOOLS,
-      SYSTEM_PROMPT,
-    );
-    toolSpinner.stop();
+    try {
+      response = await sendMessage(
+        config,
+        apiKey,
+        messages,
+        TOOLS,
+        SYSTEM_PROMPT,
+      );
+    } finally {
+      spinner.stop();
+    }
     trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
   }
 

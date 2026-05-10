@@ -142,6 +142,33 @@ export function saveApiKey(provider, key) {
   persistProviderChoice(provider, PROVIDER_DEFAULTS[provider].model);
 }
 
+// Revoke a saved API key (existing)
+export function revokeApiKey(provider) {
+  const providerDefaults = PROVIDER_DEFAULTS[provider];
+  if (!providerDefaults || !providerDefaults.envKey) return;
+
+  const envKey = providerDefaults.envKey;
+  const envPath = join(PORTSCOPE_HOME, ".env");
+
+  if (!existsSync(envPath)) return;
+
+  try {
+    let lines = readFileSync(envPath, "utf8").split("\n");
+    const newLines = lines.filter((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) return true;
+      const eqIdx = trimmed.indexOf("=");
+      if (eqIdx === -1) return true;
+      return trimmed.slice(0, eqIdx).trim() !== envKey;
+    });
+
+    if (newLines.length !== lines.length) {
+      writeFileSync(envPath, newLines.join("\n") + "\n", { encoding: "utf8", mode: 0o600 });
+      delete process.env[envKey];
+    }
+  } catch { }
+}
+
 /**
  * Persist the provider and model choice to ~/.portscope/config.json.
  * Called automatically when saving keys and when switching providers.
