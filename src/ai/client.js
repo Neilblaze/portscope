@@ -77,6 +77,9 @@ async function sendAnthropic(config, apiKey, messages, tools, systemPrompt) {
 
   if (!res.ok) {
     const err = await res.text();
+    if (res.status === 401 || err.includes("x-api-key")) {
+      throw new Error("Invalid Anthropic API key. Check your ANTHROPIC_API_KEY and if you want, use /revoke to clear it and restart.");
+    }
     throw new Error(`Anthropic API error (${res.status}): ${err}`);
   }
 
@@ -205,6 +208,9 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
         `${config.ai.provider} is temporarily unavailable (${res.status}). ` +
         `The model "${config.ai.model}" may be down — try again in a moment, or switch models with /models.`,
       );
+    }
+    if (res.status === 401 || err.toLowerCase().includes("invalid_api_key")) {
+      throw new Error(`Invalid ${config.ai.provider} API key. Check your ${config.ai.provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
     }
     throw new Error(`${config.ai.provider} API error (${res.status}): ${err}`);
   }
@@ -377,7 +383,7 @@ async function sendGemini(config, apiKey, messages, tools, systemPrompt) {
   if (!res.ok) {
     const err = await res.text();
     if (res.status === 400 && err.includes("API_KEY_INVALID")) {
-      throw new Error("Invalid Gemini API key. Check your GEMINI_API_KEY.");
+      throw new Error("Invalid Gemini API key. Check your GEMINI_API_KEY and if you want, use /revoke to clear it and restart.");
     }
     throw new Error(`Gemini API error (${res.status}): ${err}`);
   }

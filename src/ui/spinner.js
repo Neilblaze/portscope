@@ -30,7 +30,7 @@ export const SPINNER_VERBS = [
   "Beboppin'", "Befuddling", "Billowing", "Blanching", "Bloviating", "Boogieing",
   "Boondoggling", "Booping", "Bootstrapping", "Brewing", "Bunning", "Burrowing",
   "Calculating", "Canoodling", "Caramelizing", "Cascading", "Catapulting", "Cerebrating",
-  "Channeling", "Channelling", "Choreographing", "Churning", "Clauding", "Coalescing",
+  "Channeling", "Channelling", "Choreographing", "Churning", "Chirping", "Coalescing",
   "Cogitating", "Combobulating", "Composing", "Computing", "Concocting", "Considering",
   "Contemplating", "Cooking", "Crafting", "Creating", "Crunching", "Crystallizing",
   "Cultivating", "Deciphering", "Deliberating", "Determining", "Dilly-dallying",
@@ -61,12 +61,7 @@ export const SPINNER_VERBS = [
 ];
 
 
-/**
- * Start an animated braille spinner.
- * Returns { stop() } handle to clear the spinner.
- *
- * @param {string} [label] — custom label, or a random one is picked
- */
+
 export function startSpinner(label) {
   if (!process.stdout.isTTY) {
     const text = label || `${SPINNER_VERBS[0]}...`;

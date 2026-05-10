@@ -138,7 +138,7 @@ function isTableSeparator(line) {
 
 // Render markdown table rows as a cli-table3 table (\w rounded corners)
 function renderTable(rows) {
-  if (rows.length === 0) return "";
+  if (rows.length <= 1) return "";
 
   const parseRow = (row) =>
     row
