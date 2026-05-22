@@ -56,10 +56,11 @@ export function renderMarkdown(text) {
     const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
     if (headingMatch) {
       const content = renderInline(headingMatch[2]);
+      const cols = process.stdout.columns || 80;
       if (headingMatch[1].length === 1) {
-        output.push("  " + chalk.bold.underline(content));
+        output.push(wrapAnsi(chalk.bold.underline(content), cols - 2, "  ", "  "));
       } else {
-        output.push("  " + chalk.bold(content));
+        output.push(wrapAnsi(chalk.bold(content), cols - 2, "  ", "  "));
       }
       i++;
       continue;
@@ -69,7 +70,11 @@ export function renderMarkdown(text) {
     const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
     if (ulMatch) {
       const indent = ulMatch[1] || "";
-      output.push(indent + chalk.gray("  • ") + renderInline(ulMatch[2]));
+      const prefix = indent + chalk.gray("  • ");
+      const rendered = renderInline(ulMatch[2]);
+      const cols = process.stdout.columns || 80;
+      const strippedPrefix = stripAnsi(prefix);
+      output.push(wrapAnsi(rendered, cols - strippedPrefix.length, prefix, " ".repeat(strippedPrefix.length)));
       i++;
       continue;
     }
@@ -79,13 +84,23 @@ export function renderMarkdown(text) {
     if (olMatch) {
       const indent = olMatch[1] || "";
       const num = line.match(/^(\s*)(\d+)/)[2];
-      output.push(indent + chalk.gray(`  ${num}. `) + renderInline(olMatch[2]));
+      const prefix = indent + chalk.gray(`  ${num}. `);
+      const rendered = renderInline(olMatch[2]);
+      const cols = process.stdout.columns || 80;
+      const strippedPrefix = stripAnsi(prefix);
+      output.push(wrapAnsi(rendered, cols - strippedPrefix.length, prefix, " ".repeat(strippedPrefix.length)));
       i++;
       continue;
     }
 
     // Regular line (inline formatting only)
-    output.push(line.trim() ? "  " + renderInline(line) : "");
+    if (line.trim()) {
+      const rendered = renderInline(line);
+      const cols = process.stdout.columns || 80;
+      output.push(wrapAnsi(rendered, cols - 2, "  ", "  "));
+    } else {
+      output.push("");
+    }
     i++;
   }
 
@@ -135,6 +150,38 @@ function isTableSeparator(line) {
   return /^\s*\|[\s:]*[-]+[\s:]*(\|[\s:]*[-]+[\s:]*)*\|\s*$/.test(line);
 }
 
+function stripAnsi(str) {
+  return str.replace(/\x1B\[\d+;?\d*m/g, "");
+}
+
+function wrapAnsi(text, width, firstIndent, subIndent) {
+  const words = text.split(/(\s+)/);
+  const lines = [];
+  let currentLine = "";
+  let currentLength = 0;
+  let isFirstLine = true;
+
+  for (const word of words) {
+    const wordLen = stripAnsi(word).length;
+    if (currentLength === 0 && !word.trim()) continue;
+    
+    if (currentLength + wordLen > width) {
+      if (currentLine) {
+        lines.push((isFirstLine ? firstIndent : subIndent) + currentLine);
+        currentLine = "";
+        currentLength = 0;
+        isFirstLine = false;
+      }
+      if (!word.trim()) continue;
+    }
+    currentLine += word;
+    currentLength += wordLen;
+  }
+  if (currentLine) {
+    lines.push((isFirstLine ? firstIndent : subIndent) + currentLine.trimEnd());
+  }
+  return lines.join("\n");
+}
 
 // Render markdown table rows as a cli-table3 table (\w rounded corners)
 function renderTable(rows) {

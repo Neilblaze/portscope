@@ -478,3 +478,275 @@ function parseGeminiResponse(data) {
 
   return result;
 }
+
+
+// NEW UPDATE: 22/05/26 (TODO: Needs some auditing)
+// ── Streaming Support ──────────────────────────────────────────────────── ///
+
+/**
+ * Parse an SSE (Server-Sent Events) stream from a fetch Response.
+ * Yields parsed JSON objects from `data:` lines.
+ */
+async function* parseSSEStream(response) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(":")) continue;
+        if (trimmed.startsWith("data: ")) {
+          const data = trimmed.slice(6);
+          if (data === "[DONE]") return;
+          try {
+            yield JSON.parse(data);
+          } catch { /* skip malformed chunks */ }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+
+async function streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk) {
+  const body = {
+    model: config.ai.model,
+    max_tokens: config.ai.maxTokens,
+    stream: true,
+    system: systemPrompt,
+    messages: toAnthropicMessages(messages),
+    tools: tools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.parameters,
+    })),
+  };
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Anthropic streaming error (${res.status}): ${err}`);
+  }
+
+  const result = { text: "", toolCalls: [], usage: null, stopReason: "stop" };
+  let currentToolId = null;
+  let currentToolName = null;
+  let currentToolInput = "";
+
+  for await (const event of parseSSEStream(res)) {
+    switch (event.type) {
+      case "content_block_delta":
+        if (event.delta?.type === "text_delta") {
+          result.text += event.delta.text;
+          onChunk(event.delta.text);
+        } else if (event.delta?.type === "input_json_delta") {
+          currentToolInput += event.delta.partial_json || "";
+        }
+        break;
+      case "content_block_start":
+        if (event.content_block?.type === "tool_use") {
+          currentToolId = event.content_block.id;
+          currentToolName = event.content_block.name;
+          currentToolInput = "";
+        }
+        break;
+      case "content_block_stop":
+        if (currentToolName) {
+          try {
+            result.toolCalls.push({
+              id: currentToolId,
+              name: currentToolName,
+              input: JSON.parse(currentToolInput || "{}"),
+            });
+          } catch {
+            result.toolCalls.push({
+              id: currentToolId,
+              name: currentToolName,
+              input: {},
+            });
+          }
+          currentToolName = null;
+          currentToolInput = "";
+        }
+        break;
+      case "message_delta":
+        if (event.delta?.stop_reason === "tool_use") {
+          result.stopReason = "tool_calls";
+        }
+        if (event.usage) {
+          result.usage = result.usage || { inputTokens: 0, outputTokens: 0 };
+          result.usage.outputTokens = event.usage.output_tokens || 0;
+        }
+        break;
+      case "message_start":
+        if (event.message?.usage) {
+          result.usage = {
+            inputTokens: event.message.usage.input_tokens || 0,
+            outputTokens: 0,
+          };
+        }
+        break;
+    }
+  }
+
+  return result;
+}
+
+
+async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, onChunk) {
+  const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
+  const body = {
+    model: config.ai.model,
+    [tokenKey]: config.ai.maxTokens,
+    stream: true,
+    stream_options: { include_usage: true },
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...toOpenAIMessages(messages),
+    ],
+    tools: tools.map((t) => ({
+      type: "function",
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    })),
+  };
+
+  const headers = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+
+  if (config.ai.provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
+    headers["X-Title"] = "PortScope";
+  }
+
+  const res = await fetch(baseUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`${config.ai.provider} streaming error (${res.status}): ${err}`);
+  }
+
+  const result = { text: "", toolCalls: [], usage: null, stopReason: "stop" };
+  const toolCallAccumulators = new Map();
+
+  for await (const data of parseSSEStream(res)) {
+    const choice = data.choices?.[0];
+    if (choice) {
+      if (choice.delta?.content) {
+        result.text += choice.delta.content;
+        onChunk(choice.delta.content);
+      }
+
+      if (choice.delta?.tool_calls) {
+        for (const tc of choice.delta.tool_calls) {
+          if (tc.id) {
+            toolCallAccumulators.set(tc.index, {
+              id: tc.id,
+              name: tc.function?.name || "",
+              args: "",
+            });
+          }
+          const acc = toolCallAccumulators.get(tc.index);
+          if (acc && tc.function?.arguments) {
+            acc.args += tc.function.arguments;
+            if (tc.function.name) acc.name = tc.function.name;
+          }
+        }
+      }
+
+      if (choice.finish_reason === "tool_calls") {
+        result.stopReason = "tool_calls";
+      }
+    }
+
+    if (data.usage) {
+      result.usage = {
+        inputTokens: data.usage.prompt_tokens || 0,
+        outputTokens: data.usage.completion_tokens || 0,
+      };
+    }
+  }
+
+  for (const [, acc] of toolCallAccumulators) {
+    try {
+      result.toolCalls.push({
+        id: acc.id,
+        name: acc.name,
+        input: JSON.parse(acc.args || "{}"),
+      });
+    } catch {
+      result.toolCalls.push({ id: acc.id, name: acc.name, input: {} });
+    }
+  }
+
+  return result;
+}
+
+
+/**
+ * Send a message using streaming where supported.
+ * Falls back to non-streaming sendMessage on unsupported providers or errors.
+ *
+ * @param {object} config
+ * @param {string} apiKey
+ * @param {Array} messages
+ * @param {Array} tools
+ * @param {string} systemPrompt
+ * @param {function} onChunk - Called with each text delta: onChunk(textDelta)
+ * @returns {Promise<{text: string, toolCalls: Array, usage: object, stopReason: string}>}
+ */
+export async function sendMessageStream(config, apiKey, messages, tools, systemPrompt, onChunk) {
+  const provider = config.ai.provider;
+  try {
+    switch (provider) {
+      case "anthropic":
+        return await streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk);
+      case "openai":
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, onChunk);
+      case "openrouter":
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, onChunk);
+      case "nvidia":
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, onChunk);
+      case "cerebras":
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, onChunk);
+      case "groq":
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, onChunk);
+      default:
+        // Gemini, Ollama: fall back to non-streaming
+        return await sendMessage(config, apiKey, messages, tools, systemPrompt);
+    }
+  } catch {
+    return await sendMessage(config, apiKey, messages, tools, systemPrompt);
+  }
+}

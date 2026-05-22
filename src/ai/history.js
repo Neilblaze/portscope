@@ -34,7 +34,7 @@ function saveIndex(index) {
 export function generateConversationId() {
   const date = new Date().toISOString().slice(0, 10);
   const index = loadIndex();
-  const todayCount = index.filter((c) => c.id.startsWith(`conv_${date}`)).length;
+  const todayCount = index.filter((c) => c.id && c.id.startsWith(`conv_${date}`)).length;
   return `conv_${date}_${String(todayCount + 1).padStart(3, "0")}`;
 }
 

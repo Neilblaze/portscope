@@ -10,9 +10,10 @@ import { logsCommand } from "./logs.js";
 import { watchCommand } from "./watch.js";
 import { pauseCommand, resumeCommand } from "./pause.js";
 import { handleSlashCommand, processConversation } from "../ai/conversation.js";
-import { saveConversation } from "../ai/history.js";
+import { generateConversationId, saveConversation } from "../ai/history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
-import { createGhostTextInterface } from "../ui/ghost-text.js";
+import { createGhostTextInterface, setPortCache } from "../ui/ghost-text.js";
+import { getListeningPorts } from "../scanner/ports.js";
 import { sanitizeError } from "../config/sanitize-error.js";
 
 
@@ -23,6 +24,7 @@ const SLASH_COMMANDS = [
   { name: "/model", desc: "Set model" },
   { name: "/status", desc: "Current config" },
   { name: "/usage", desc: "Token usage & cost" },
+  { name: "/verbose", desc: "Toggle verbose mode" },
   { name: "/clear", desc: "Reset chat" },
   { name: "/history", desc: "Previous conversations" },
   { name: "/load", desc: "Restore conversation" },
@@ -38,15 +40,21 @@ const SLASH_COMMANDS = [
  *   - Type direct commands (kill, ps, inspect, etc.)
  *   - Use slash commands (/provider, /models, etc.)
  */
-export async function interactiveMode(showAll) {
+export async function interactiveMode(showAll, verbose = false) {
   console.clear();
 
   await listCommand(showAll, true);
 
+  try {
+    const ports = await getListeningPorts();
+    setPortCache(ports);
+  } catch { /* non-critical — suggestions will just be empty */ }
+
   const config = await loadConfig();
   const apiKey = getApiKey(config);
   const messages = [];
-  const state = { config, apiKey };
+  const state = { config, apiKey, verbose };
+  state.conversationId = generateConversationId();
 
   console.log(chalk.gray("  ╭─────────────────────────────────────────────────────────────────────────────●"));
   if (apiKey) {
@@ -185,7 +193,7 @@ export async function interactiveMode(showAll) {
       }
 
       try {
-        await processConversation(state.config, state.apiKey, messages, rl);
+        await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
         messages.pop();
@@ -330,6 +338,10 @@ async function handleDirectCommand(input, rl) {
       }
       try {
         await listCommand(parts.includes("--all") || parts.includes("-a"), false);
+        try {
+          const ports = await getListeningPorts();
+          setPortCache(ports);
+        } catch { /* non-critical */ }
       } catch (err) {
         console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
       }
@@ -370,6 +382,7 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
   console.log(`  ${chalk.cyan("/status")}          Show current provider & model`);
   console.log(`  ${chalk.cyan("/usage")}           Show token usage & estimated cost`);
+  console.log(`  ${chalk.cyan("/verbose")}         Toggle verbose/streaming mode`);
   console.log(`  ${chalk.cyan("/clear")}           Reset conversation history`);
   console.log();
   console.log(chalk.rgb(255, 140, 0).bold("  History & Export"));

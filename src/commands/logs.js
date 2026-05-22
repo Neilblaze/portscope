@@ -186,6 +186,7 @@ export async function logsCommand(filteredArgs) {
     } else {
       await new Promise((resolve) => tail.on("close", resolve));
     }
+    return;
   }
 
 
@@ -209,6 +210,7 @@ export async function logsCommand(filteredArgs) {
     } else {
       await new Promise((resolve) => proc.on("close", resolve));
     }
+    return;
   }
 
   console.log(

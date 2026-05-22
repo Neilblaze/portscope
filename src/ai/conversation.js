@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { createInterface } from "readline";
-import { sendMessage } from "./client.js";
+import { sendMessage, sendMessageStream } from "./client.js";
 import { executeTool } from "./executor.js";
 import { TOOLS, DESTRUCTIVE_TOOLS } from "./tools.js";
 import { PROVIDER_DEFAULTS, PROVIDER_IDS } from "../config/schema.js";
@@ -37,7 +37,8 @@ You help users:
   - Monitor port changes
 
 Behavior rules:
-  - For greetings (hi, hello, hey, etc.): respond with a SHORT one-liner like "Hey! What port or process do you need help with?" — do NOT list your capabilities or available tools. The user already sees a command reference in the terminal.
+  - For simple greetings (hi, hello): respond briefly like "Hey! What port or process do you need help with?"
+  - If the user explicitly asks what you can do (e.g., "what can portscope do?"): provide a concise, friendly summary of your capabilities (listing ports, inspecting processes, killing zombies, viewing logs, etc.). Do not treat this as a simple greeting.
   - For actual queries: call the appropriate tool immediately. Be action-oriented.
   - When killing processes or cleaning up, explain what you're about to do before calling the tool.
 
@@ -56,10 +57,10 @@ Security & Guardrails (CRITICAL):
 
 
 
-export async function startChat(config, apiKey) {
+export async function startChat(config, apiKey, verbose = false) {
   const messages = [];
   const conversationId = generateConversationId();
-  const state = { config, apiKey, conversationId };
+  const state = { config, apiKey, conversationId, verbose };
 
   const rl = createGhostTextInterface({
     input: process.stdin,
@@ -122,7 +123,7 @@ export async function startChat(config, apiKey) {
       }
 
       try {
-        await processConversation(state.config, state.apiKey, messages, rl);
+        await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
         messages.pop();
@@ -263,6 +264,16 @@ export async function handleSlashCommand(input, state, messages, rl) {
       }
       return;
 
+    case "verbose":
+      state.verbose = !state.verbose;
+      if (state.verbose) {
+        console.log(chalk.green(`\n  ✓ Verbose mode ${chalk.bold("enabled")} — streaming & detailed tool output`));
+      } else {
+        console.log(chalk.green(`\n  ✓ Verbose mode ${chalk.bold("disabled")} — compact output`));
+      }
+      console.log();
+      return;
+
     default:
       console.log(chalk.yellow(`\n  Unknown command: /${cmd}`));
       printSlashHelp();
@@ -294,6 +305,7 @@ function printSlashHelp() {
     `  ${chalk.cyan("/model <name>")}    Set model directly`,
     `  ${chalk.cyan("/status")}          Show current provider & model`,
     `  ${chalk.cyan("/usage")}           Usage dashboard, context & telemetry`,
+    `  ${chalk.cyan("/verbose")}         Toggle verbose/streaming mode`,
     `  ${chalk.cyan("/clear")}           Reset conversation history`,
     "",
     chalk.rgb(255, 140, 0).bold("  History & Export"),
@@ -667,21 +679,44 @@ function question(rl, prompt) {
  * @param {Array} messages
  * @param {import("readline").Interface} [rl] — REPL readline to reuse for y/N prompts
  */
-export async function processConversation(config, apiKey, messages, rl) {
-  let spinner = startSpinner();
+export async function processConversation(config, apiKey, messages, rl, options = {}) {
+  const { verbose = false } = options;
   let response;
   const t0 = Date.now();
 
-  try {
-    response = await sendMessage(
-      config,
-      apiKey,
-      messages,
-      TOOLS,
-      SYSTEM_PROMPT,
-    );
-  } finally {
-    spinner.stop();
+  if (verbose) {
+    let chunkCount = 0;
+    const thinkingInterval = setInterval(() => {
+      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      const label = chunkCount > 0
+        ? `Generating... (${chunkCount} chunks, ${elapsed}s)`
+        : `Thinking... (${elapsed}s)`;
+      process.stdout.write(`\r  💭 ${chalk.dim(label)}  `);
+    }, 200);
+
+    try {
+      response = await sendMessageStream(
+        config, apiKey, messages, TOOLS, SYSTEM_PROMPT,
+        () => { chunkCount++; },
+      );
+    } finally {
+      clearInterval(thinkingInterval);
+      process.stdout.write("\r\x1b[2K");
+    }
+
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    if (response.usage) {
+      const inT = response.usage.inputTokens;
+      const outT = response.usage.outputTokens;
+      console.log(chalk.dim(`  ↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${elapsed}s`));
+    }
+  } else {
+    let spinner = startSpinner();
+    try {
+      response = await sendMessage(config, apiKey, messages, TOOLS, SYSTEM_PROMPT);
+    } finally {
+      spinner.stop();
+    }
   }
 
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
@@ -702,8 +737,20 @@ export async function processConversation(config, apiKey, messages, rl) {
 
     const toolResults = [];
     for (const tc of response.toolCalls) {
-      // TODO: I need to fix it (it has some bugs, and not working sometimes)
-      if (process.stdout.isTTY && !DESTRUCTIVE_TOOLS.has(tc.name)) {
+      if (verbose) {
+        // Verbose: show tool call parameters and execution time
+        const params = Object.keys(tc.input || {});
+        const paramsStr = params.length > 0
+          ? chalk.gray(` (${params.map(k => `${k}: ${JSON.stringify(tc.input[k])}`).join(", ")})`)
+          : "";
+        process.stdout.write(`  ${chalk.dim("⚡")} ${chalk.white(tc.name)}${paramsStr}`);
+        const toolT0 = Date.now();
+        const result = await executeTool(tc.name, tc.input, rl);
+        if (!DESTRUCTIVE_TOOLS.has(tc.name)) {
+          console.log(chalk.dim(` ${Date.now() - toolT0}ms`));
+        }
+        toolResults.push({ id: tc.id, result });
+      } else if (process.stdout.isTTY && !DESTRUCTIVE_TOOLS.has(tc.name)) {
         const glowFrames = [
           chalk.dim("⚡"),
           "⚡",
@@ -736,18 +783,40 @@ export async function processConversation(config, apiKey, messages, rl) {
 
     messages.push({ role: "user", toolResults });
 
-    spinner = startSpinner();
     const t1 = Date.now();
-    try {
-      response = await sendMessage(
-        config,
-        apiKey,
-        messages,
-        TOOLS,
-        SYSTEM_PROMPT,
-      );
-    } finally {
-      spinner.stop();
+    if (verbose) {
+      let chunkCount = 0;
+      const thinkingInterval = setInterval(() => {
+        const elapsed = ((Date.now() - t1) / 1000).toFixed(1);
+        const label = chunkCount > 0
+          ? `Generating... (${chunkCount} chunks, ${elapsed}s)`
+          : `Thinking... (${elapsed}s)`;
+        process.stdout.write(`\r  💭 ${chalk.dim(label)}  `);
+      }, 200);
+
+      try {
+        response = await sendMessageStream(
+          config, apiKey, messages, TOOLS, SYSTEM_PROMPT,
+          () => { chunkCount++; },
+        );
+      } finally {
+        clearInterval(thinkingInterval);
+        process.stdout.write("\r\x1b[2K");
+      }
+
+      const elapsed = ((Date.now() - t1) / 1000).toFixed(1);
+      if (response.usage) {
+        const inT = response.usage.inputTokens;
+        const outT = response.usage.outputTokens;
+        console.log(chalk.dim(`  ↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${elapsed}s`));
+      }
+    } else {
+      let spinner = startSpinner();
+      try {
+        response = await sendMessage(config, apiKey, messages, TOOLS, SYSTEM_PROMPT);
+      } finally {
+        spinner.stop();
+      }
     }
     trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
   }

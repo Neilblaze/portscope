@@ -153,6 +153,7 @@ export function isDevProcess(processName, command) {
     /\bgulp\b/,
     /\bng serve\b/,
     /\bgatsb/,
+    /\breact-scripts\b/,
     /\bflask\b/,
     /\bdjango\b|manage\.py/,
     /\buvicorn\b/,

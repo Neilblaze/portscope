@@ -42,10 +42,10 @@ export function detectFramework(projectRoot) {
       if (allDeps["svelte"]) return "Svelte";
       if (allDeps["@remix-run/react"] || allDeps["remix"]) return "Remix";
       if (allDeps["astro"]) return "Astro";
-      if (allDeps["vite"]) return "Vite";
       if (allDeps["@angular/core"]) return "Angular";
       if (allDeps["vue"]) return "Vue";
-      if (allDeps["react"]) return "React";
+      if (allDeps["react"] || allDeps["react-scripts"]) return "React";
+      if (allDeps["vite"]) return "Vite";
       if (allDeps["express"]) return "Express";
       if (allDeps["fastify"]) return "Fastify";
       if (allDeps["hono"]) return "Hono";
@@ -89,6 +89,7 @@ export function detectFrameworkFromCommand(command, processName) {
   if (cmd.includes("remix")) return "Remix";
   if (cmd.includes("astro")) return "Astro";
   if (cmd.includes("gatsby")) return "Gatsby";
+  if (cmd.includes("react-scripts")) return "React";
   if (cmd.includes("flask")) return "Flask";
   if (cmd.includes("django") || cmd.includes("manage.py")) return "Django";
   if (cmd.includes("uvicorn")) return "FastAPI";

@@ -16,14 +16,15 @@ import chalk from "chalk";
 
 const args = process.argv.slice(2);
 const showAll = args.includes("--all") || args.includes("-a");
-const filteredArgs = args.filter((a) => a !== "--all" && a !== "-a");
+const verbose = args.includes("--verbose");
+const filteredArgs = args.filter((a) => a !== "--all" && a !== "-a" && a !== "--verbose");
 const command = filteredArgs[0];
 
 async function main() {
   // No args: interactive mode (shows ports + REPL) on TTY, just list on pipe
   if (!command) {
     if (process.stdin.isTTY) {
-      await interactiveMode(showAll);
+      await interactiveMode(showAll, verbose);
     } else {
       await listCommand(showAll);
     }
@@ -54,7 +55,7 @@ async function main() {
       await watchCommand();
       break;
     case "chat":
-      await chatCommand();
+      await chatCommand(verbose);
       break;
     case "pause":
       await pauseCommand(filteredArgs);

@@ -2,6 +2,22 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.6.0] - 2026-05-22
+
+### Added
+- **Verbose & Streaming AI** — Added a `/verbose` interactive toggle and `--verbose` CLI flag to enable real-time SSE streaming for supported AI providers (Anthropic, OpenAI, OpenRouter, NVIDIA, Cerebras, Groq). Displays real-time progress indicators, token metrics, latency stats, and detailed tool execution data. Falls back gracefully to non-streaming.
+- **Contextual Port Suggestions** — Enhanced the ghost-text interface to intelligently suggest active port numbers from a cached list when typing port-accepting commands (`kill`, `pause`, `resume`, `logs`, `inspect`). Type `kill 3` to auto-suggest `kill 3000` if port 3000 is active.
+
+### Fixed
+- **History File Crash** — Resolved a crash on startup where legacy, corrupted history entries missing a `conversationId` caused the CLI to fail during initialization.
+- **Interactive Mode ID Sync** — Fixed an issue where new conversations started in interactive mode lacked a unique `conversationId`, preventing them from properly saving their chat history.
+- **Ghost-text Rendering Conflict** — Fixed terminal UI artifacts and overlapping text bugs caused when readline processed Tab or Enter key completions simultaneously with the custom suggestion renderer.
+- **Logs Fall-Through Bug** — Patched a fall-through execution bug in the `logs` command that caused the CLI to display misleading secondary status messages after successfully tailing logs.
+- **React/Vite Port Identification** — Improved framework detection to prioritize React over Vite and explicitly detect Create React App (`react-scripts`), ensuring accurate environment tagging for React applications.
+
+### Changed
+- **Smart System Prompt** — The AI system prompt is now more conversational when asked about its core capabilities (e.g., "what can portscope do?"), overriding the restrictive greeting fallback to provide helpful command summaries.
+
 ## [1.5.1] - 2026-05-11
 
 ### Fixed
