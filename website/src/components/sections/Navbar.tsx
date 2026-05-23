@@ -40,8 +40,8 @@ export function Navbar() {
                 <FaGithub className="h-4 w-4 mr-2" />
                 <span className="font-medium">GitHub</span>
                 {stars !== null && (
-                  <span className="ml-2 flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary group-hover:bg-primary/20 transition-colors">
-                    <Star className="h-3 w-3 mr-1 fill-primary" />
+                  <span className="ml-2 flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary group-hover:bg-accent-foreground/20 group-hover:text-accent-foreground transition-colors">
+                    <Star className="h-3 w-3 mr-1 fill-primary group-hover:fill-accent-foreground transition-colors" />
                     {stars.toLocaleString()}
                   </span>
                 )}

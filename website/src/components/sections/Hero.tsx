@@ -1,6 +1,7 @@
 import { Bot } from 'lucide-react';
 import PackageInstallerTabs from '@/components/ui/package-installer-tabs';
 import HeroBackgroundElements from '@/components/ui/hero-background';
+import { Typewriter } from '@/components/ui/typewriter';
 
 export function Hero() {
   return (
@@ -14,7 +15,15 @@ export function Hero() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-balance">
-            Stop <span className="shimmer-text">guessing</span> which process is hogging port 3000!
+            Stop <span className="shimmer-text">guessing</span> which process is hogging port <Typewriter
+              words={["3000", "5173", "8000", "5432", "6379", "8080", "6443", "8443", "8888", "9090"]}
+              speed={70}
+              waitTime={1500}
+              deleteSpeed={40}
+              cursorChar={"_"}
+              className="text-primary font-mono bg-muted/30 px-2 rounded-md"
+              cursorClassName="text-primary/70 font-sans font-light -ml-[1px]"
+            />
           </h1>
 
           <p className="text-lg md:text-xl text-muted-foreground max-w-[42rem] text-balance">
