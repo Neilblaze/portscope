@@ -9,7 +9,7 @@ try {
   const pkg = JSON.parse(readFileSync(join(__dirname, "..", "package.json"), "utf8"));
   _version = pkg.version;
 } catch {
-  _version = "1.6.0";
+  _version = "1.6.1";
 }
 
 export const VERSION = _version;
