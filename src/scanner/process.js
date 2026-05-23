@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import { basename } from "path";
 import { getPlatform } from "../platform/index.js";
+import { promptSudoAction } from "../utils/sudo.js";
 import {
   findProjectRoot,
   formatUptime,
@@ -78,7 +79,7 @@ export function pidExists(pid) {
 }
 
 
-export function killProcess(pid, signal = "SIGTERM") {
+export async function killProcess(pid, signal = "SIGTERM", rl) {
   if (process.platform === "win32" && signal === "SIGKILL") {
     try {
       execSync(`taskkill /F /PID ${pid}`, {
@@ -86,14 +87,22 @@ export function killProcess(pid, signal = "SIGTERM") {
         stdio: ["pipe", "pipe", "pipe"],
       });
       return true;
-    } catch {
+    } catch (err) {
+      if (err.status === 1 || (err.message && err.message.includes("Access is denied"))) {
+        const res = await promptSudoAction("kill process", `taskkill /F /PID ${pid}`, rl);
+        return res.success;
+      }
       return false;
     }
   }
   try {
     process.kill(pid, signal);
     return true;
-  } catch {
+  } catch (err) {
+    if (err.code === "EPERM" || err.code === "EACCES") {
+      const res = await promptSudoAction("kill process", `kill -${signal.replace("SIG", "")} ${pid}`, rl);
+      return res.success;
+    }
     return false;
   }
 }

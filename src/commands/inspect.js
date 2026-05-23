@@ -16,9 +16,9 @@ export async function inspectCommand(portNum) {
     });
     rl.question(
       chalk.yellow(`  Kill process on :${portNum}? [y/N] `),
-      (answer) => {
+      async (answer) => {
         if (answer.toLowerCase() === "y") {
-          const success = killProcess(info.pid);
+          const success = await killProcess(info.pid, "SIGTERM", rl);
           if (success) {
             console.log(chalk.green(`\n  ✓ Killed PID ${info.pid}\n`));
           } else {

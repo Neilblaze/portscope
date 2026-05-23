@@ -2,6 +2,18 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.6.1] - 2026-05-23
+
+### Added
+- **System Telemetry Tool** — Added `get_system_stats()` AI tool utilizing the native Node.js `os` module to fetch system-wide CPU load, memory pressure, and available RAM, enabling the assistant to diagnose machine-level performance bottlenecks.
+- **Self-Elevating Sudo Interceptor** — Automatically intercepts permission denied (`EPERM`) errors for root-owned processes. Dynamically prompts the user (`❯ Run this action with sudo? [y/N]`) inside the REPL, temporarily elevating permissions to fetch logs or terminate protected processes without requiring a full CLI restart.
+
+### Changed
+- **Aesthetic Telemetry Output** — The AI now formats system diagnostic data natively as a highly styled Markdown table with color-coded status emojis (🟢 Normal, 🟡 Moderate, 🔴 High) and encapsulated blockquote summaries.
+- **Smart Metric Colorization** — Upgraded the custom Markdown renderer to automatically color-code status keywords (Normal, Moderate, High, Critical) in AI responses. Engineered a negative lookbehind/lookahead regex to safely ignore hyphenated compound words (e.g., `high-memory`).
+- **Blockquote Wrapping & Styling** — Improved Markdown blockquote (`>`) rendering in the terminal. Blockquotes are now properly wrapped via `wrapAnsi` to prevent layout breaking, padded accurately, and prefixed with a vibrant `💡` icon for a premium UX.
+
+
 ## [1.6.0] - 2026-05-22
 
 ### Added

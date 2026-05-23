@@ -1,6 +1,7 @@
 import { execSync } from "child_process";
 import { existsSync, readFileSync, readdirSync, readlinkSync } from "fs";
 import { join } from "path";
+import { promptSudoAction } from "../utils/sudo.js";
 
 /**
  * Find log files for a given PID. Platform-aware:
@@ -9,16 +10,28 @@ import { join } from "path";
  * - Windows: common log path scanning
  * Returns array of { path, fd, type } sorted by relevance.
  */
-export function getProcessLogFiles(pid) {
+export async function getProcessLogFiles(pid, rl) {
   const files = [];
   const plat = process.platform;
 
   if (plat === "darwin" || plat === "linux") {
     try {
-      const raw = execSync(`lsof -p ${pid} 2>/dev/null`, {
-        encoding: "utf8",
-        timeout: 5000,
-      }).trim();
+      let raw = "";
+      try {
+        raw = execSync(`lsof -p ${pid}`, {
+          encoding: "utf8",
+          timeout: 5000,
+          stdio: ["ignore", "pipe", "pipe"],
+        }).trim();
+      } catch (err) {
+        if (err.stderr && (err.stderr.toLowerCase().includes("permission denied") || err.stderr.toLowerCase().includes("operation not permitted"))) {
+          const res = await promptSudoAction(`read open files for PID ${pid}`, `lsof -p ${pid}`, rl);
+          if (res.success) raw = res.output.trim();
+          else throw err;
+        } else {
+          throw err;
+        }
+      }
 
       for (const line of raw.split("\n").slice(1)) {
         const cols = line.split(/\s+/);
@@ -60,7 +73,7 @@ export function getProcessLogFiles(pid) {
   }
 
   // Check common framework log locations relative to process cwd
-  const cwdRaw = getProcessCwd(pid);
+  const cwdRaw = await getProcessCwd(pid, rl);
   if (cwdRaw) {
     const commonLogs = [
       ".next/server.log",
@@ -103,14 +116,30 @@ function isLogLikePath(name) {
   );
 }
 
-function getProcessCwd(pid) {
+async function getProcessCwd(pid, rl) {
   try {
     if (process.platform === "linux") {
-      return execSync(`readlink -f /proc/${pid}/cwd 2>/dev/null`, { encoding: "utf8", timeout: 3000 }).trim();
+      try {
+        return execSync(`readlink -f /proc/${pid}/cwd`, { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "pipe"] }).trim();
+      } catch (err) {
+        if (err.stderr && err.stderr.toLowerCase().includes("permission denied")) {
+          const res = await promptSudoAction(`get CWD for PID ${pid}`, `readlink -f /proc/${pid}/cwd`, rl);
+          if (res.success) return res.output.trim();
+        }
+      }
     }
     if (process.platform === "darwin") {
-      return execSync(`lsof -p ${pid} -d cwd -Fn 2>/dev/null`, { encoding: "utf8", timeout: 3000 })
-        .split("\n").find((l) => l.startsWith("n"))?.slice(1);
+      try {
+        return execSync(`lsof -p ${pid} -d cwd -Fn`, { encoding: "utf8", timeout: 3000, stdio: ["ignore", "pipe", "pipe"] })
+          .split("\n").find((l) => l.startsWith("n"))?.slice(1);
+      } catch (err) {
+        if (err.stderr && (err.stderr.toLowerCase().includes("permission denied") || err.stderr.toLowerCase().includes("operation not permitted"))) {
+          const res = await promptSudoAction(`get CWD for PID ${pid}`, `lsof -p ${pid} -d cwd -Fn`, rl);
+          if (res.success) {
+            return res.output.split("\n").find((l) => l.startsWith("n"))?.slice(1);
+          }
+        }
+      }
     }
     if (process.platform === "win32") {
       return execSync(

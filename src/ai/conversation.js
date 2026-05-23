@@ -8,7 +8,7 @@ import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice, r
 import { fetchAvailableModels, validateApiKey } from "../config/models.js";
 import { maskApiKey } from "../config/mask.js";
 import { sanitizeError } from "../config/sanitize-error.js";
-import { renderMarkdown } from "../ui/markdown.js";
+import { renderMarkdown, wrapAnsi } from "../ui/markdown.js";
 import { startSpinner } from "../ui/spinner.js";
 import { staggerPrint, flashSuccess } from "../ui/animate.js";
 import { trackUsage, printUsage, resetUsage } from "./usage.js";
@@ -35,11 +35,21 @@ You help users:
   - Find and clean up orphaned/zombie processes
   - View process logs
   - Monitor port changes
+  - Diagnose system slowness or memory leaks using machine telemetry
 
 Behavior rules:
   - For simple greetings (hi, hello): respond briefly like "Hey! What port or process do you need help with?"
-  - If the user explicitly asks what you can do (e.g., "what can portscope do?"): provide a concise, friendly summary of your capabilities (listing ports, inspecting processes, killing zombies, viewing logs, etc.). Do not treat this as a simple greeting.
+  - If the user explicitly asks what you can do (e.g., "what can portscope do?"): provide a concise, friendly summary of your capabilities. Do not treat this as a simple greeting.
   - For actual queries: call the appropriate tool immediately. Be action-oriented.
+  - When diagnosing system slowness or memory leaks, call get_system_stats() and connect process-level metrics with machine telemetry.
+  - When communicating system metrics, ALWAYS use a highly aesthetic markdown table with visual indicators (e.g., 🟢 Normal, 🟡 Moderate, 🔴 High/Critical) instead of a bland block of text. Use a blockquote (\`>\`) for your concise, professional summary below the table. For example:
+  | Metric | Value | Status |
+  |---|---|---|
+  | **Memory** | 12.0GB / 16.0GB | 🔴 High (75%) |
+  | **Available** | 4.0GB | |
+  | **CPU Load** | 2.55 (10 cores) | 🟢 Normal |
+  
+  > Your machine is under high memory pressure...
   - When killing processes or cleaning up, explain what you're about to do before calling the tool.
 
 Formatting rules:
@@ -683,6 +693,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
   const { verbose = false } = options;
   let response;
   const t0 = Date.now();
+  let tookAction = false;
 
   if (verbose) {
     let chunkCount = 0;
@@ -724,6 +735,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
   // Tool calling loop
   // NOTE: AI can make multiple rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
+    tookAction = true;
     if (response.text) {
       const rendered = renderMarkdown(response.text);
       console.log(`\n${rendered}`);
@@ -824,6 +836,18 @@ export async function processConversation(config, apiKey, messages, rl, options 
   if (response.text) {
     const rendered = renderMarkdown(response.text);
     console.log(`\n${rendered}\n`);
+
+    if (!tookAction) {
+      const lastUserMsg = messages.slice().reverse().find(m => m.role === "user");
+      const userText = lastUserMsg ? (lastUserMsg._text || (typeof lastUserMsg.content === "string" ? lastUserMsg.content : "")) : "";
+      const lower = userText.toLowerCase();
+      const keywords = ["exit", "quit", "close", "kill", "pause", "stop", "terminate", "free", "leave"];
+      if (keywords.some(w => lower.includes(w))) {
+        const msg = "💡 If you want to terminate or suspend a process, use 'kill' or 'pause'. Run 'help' to see all commands, or type 'exit' / 'quit' to close this interactive session.";
+        const cols = process.stdout.columns || 80;
+        console.log(chalk.dim(wrapAnsi(msg, cols - 2, "  ", "     ")) + "\n");
+      }
+    }
   }
 
   messages.push({ role: "assistant", text: response.text, toolCalls: [] });

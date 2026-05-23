@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import os from "os";
 import { createInterface } from "readline";
 import chalk from "chalk";
 import { getListeningPorts, getPortDetails } from "../scanner/ports.js";
@@ -10,6 +11,7 @@ import {
 } from "../scanner/process.js";
 import { isDevProcess } from "../scanner/utils.js";
 import { getProcessLogFiles } from "../scanner/logs.js";
+import { getAvailableMemory } from "../scanner/memory.js";
 import { DESTRUCTIVE_TOOLS } from "./tools.js";
 import { sanitizePath } from "../scanner/sanitize.js";
 
@@ -61,7 +63,7 @@ export async function executeTool(toolName, input, rl) {
           results[t] = { error: `No process found for ${t}` };
           continue;
         }
-        const ok = killProcess(resolved.pid, signal);
+        const ok = await killProcess(resolved.pid, signal, rl);
         results[t] = ok
           ? { success: true, pid: resolved.pid, signal }
           : { success: false, error: `Failed to kill PID ${resolved.pid}` };
@@ -88,7 +90,7 @@ export async function executeTool(toolName, input, rl) {
         return { message: "No orphaned processes found." };
       const results = { killed: [], failed: [] };
       for (const p of orphaned) {
-        if (killProcess(p.pid)) results.killed.push(p.pid);
+        if (await killProcess(p.pid, "SIGTERM", rl)) results.killed.push(p.pid);
         else results.failed.push(p.pid);
       }
       return results;
@@ -108,7 +110,7 @@ export async function executeTool(toolName, input, rl) {
           continue;
         }
         seenPids.add(p.pid);
-        if (killProcess(p.pid, signal))
+        if (await killProcess(p.pid, signal, rl))
           killResults.killed.push({ port: p.port, pid: p.pid });
         else killResults.failed.push({ port: p.port, pid: p.pid });
       }
@@ -119,7 +121,7 @@ export async function executeTool(toolName, input, rl) {
       const resolved = await resolveKillTarget(input.target);
       if (!resolved)
         return { error: `No process found for ${input.target}` };
-      const logFiles = getProcessLogFiles(resolved.pid);
+      const logFiles = await getProcessLogFiles(resolved.pid, rl);
       if (logFiles.length === 0)
         return { message: "No log files found for this process." };
       try {
@@ -134,6 +136,32 @@ export async function executeTool(toolName, input, rl) {
       } catch (e) {
         return { error: `Could not read logs: ${e.message}` };
       }
+    }
+
+    case "get_system_stats": {
+      const totalMem = os.totalmem();
+      const freeMem = getAvailableMemory();
+      const usedMem = totalMem - freeMem;
+      const memPressure = ((usedMem / totalMem) * 100).toFixed(1);
+      const loadAvg = os.loadavg();
+      const cpus = os.cpus().length;
+      return {
+        memory: {
+          totalGB: (totalMem / 1024 ** 3).toFixed(2),
+          freeGB: (freeMem / 1024 ** 3).toFixed(2),
+          usedGB: (usedMem / 1024 ** 3).toFixed(2),
+          pressurePercent: memPressure,
+        },
+        cpu: {
+          cores: cpus,
+          loadAverage: {
+            "1m": loadAvg[0].toFixed(2),
+            "5m": loadAvg[1].toFixed(2),
+            "15m": loadAvg[2].toFixed(2),
+          },
+        },
+        uptimeSeconds: os.uptime(),
+      };
     }
 
     default:

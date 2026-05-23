@@ -104,6 +104,12 @@ export const TOOLS = [
       required: ["target"],
     },
   },
+  {
+    name: "get_system_stats",
+    description:
+      "Get system-wide CPU load averages, memory pressure stats, and free RAM. Use this to diagnose machine slowness or memory leaks.",
+    parameters: { type: "object", properties: {} },
+  },
 ];
 
 

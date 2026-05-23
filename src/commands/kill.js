@@ -130,7 +130,7 @@ export async function killCommand(filteredArgs, rl) {
         : `PID ${pid}`;
 
     console.log(chalk.white(`  Killing ${label}`));
-    const ok = killProcess(pid, signal);
+    const ok = await killProcess(pid, signal, rl);
     if (ok) {
       console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
       killed++;
@@ -220,7 +220,7 @@ async function killAllDevPorts(force, signal, rl) {
     seen.add(p.pid);
 
     const label = `:${p.port} — ${p.processName} (PID ${p.pid})`;
-    const ok = killProcess(p.pid, signal);
+    const ok = await killProcess(p.pid, signal, rl);
     if (ok) {
       console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
       killed++;

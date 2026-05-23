@@ -41,7 +41,7 @@ export async function cleanCommand(rl) {
 
   if (answer.toLowerCase() === "y") {
     for (const p of orphaned) {
-      if (killProcess(p.pid)) {
+      if (await killProcess(p.pid, "SIGTERM", rl)) {
         killed.push(p.pid);
       } else {
         failed.push(p.pid);

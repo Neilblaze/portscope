@@ -86,7 +86,7 @@ export async function logsCommand(filteredArgs) {
   );
   console.log();
 
-  const logFiles = getProcessLogFiles(pid);
+  const logFiles = await getProcessLogFiles(pid, rl);
 
   if (errOnly) {
     const stderrFile = logFiles.find((f) => f.fd === "stderr");

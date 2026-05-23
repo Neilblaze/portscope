@@ -47,7 +47,11 @@ export function renderMarkdown(text) {
     // Blockquote
     if (/^\s*>\s?/.test(line)) {
       const content = line.replace(/^\s*>\s?/, "");
-      output.push(chalk.gray("  │ ") + chalk.italic(renderInline(content)));
+      const rendered = renderInline(content);
+      const cols = process.stdout.columns || 80;
+      const prefix = chalk.yellow("  💡 ");
+      const subIndent = "     ";
+      output.push(wrapAnsi(chalk.italic(rendered), cols - 5, prefix, subIndent));
       i++;
       continue;
     }
@@ -133,6 +137,10 @@ function renderInline(text) {
   // Strikethrough ~~text~~
   result = result.replace(/~~([^~]+)~~/g, (_, t) => chalk.strikethrough(t));
 
+  result = result.replace(/(?<!-)\b([Nn]ormal|[Ll]ow)\b(?!-)/g, (match) => chalk.green(match));
+  result = result.replace(/(?<!-)\b([Mm]oderate)\b(?!-)/g, (match) => chalk.yellow(match));
+  result = result.replace(/(?<!-)\b([Hh]igh|[Cc]ritical)\b(?!-)/g, (match) => chalk.rgb(255, 80, 0)(match));
+
   // Restore code spans
   result = result.replace(/\x00CODE(\d+)\x00/g, (_, idx) => codeSpans[parseInt(idx, 10)]);
 
@@ -154,7 +162,7 @@ function stripAnsi(str) {
   return str.replace(/\x1B\[\d+;?\d*m/g, "");
 }
 
-function wrapAnsi(text, width, firstIndent, subIndent) {
+export function wrapAnsi(text, width, firstIndent, subIndent) {
   const words = text.split(/(\s+)/);
   const lines = [];
   let currentLine = "";
@@ -164,7 +172,7 @@ function wrapAnsi(text, width, firstIndent, subIndent) {
   for (const word of words) {
     const wordLen = stripAnsi(word).length;
     if (currentLength === 0 && !word.trim()) continue;
-    
+
     if (currentLength + wordLen > width) {
       if (currentLine) {
         lines.push((isFirstLine ? firstIndent : subIndent) + currentLine);
