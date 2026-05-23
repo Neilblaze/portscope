@@ -30,7 +30,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://www.npmjs.com/package/portscope" className="hover:text-primary transition-colors inline-block relative after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-0 hover:after:w-full after:bg-primary after:transition-all after:duration-300">
+                <a href="https://github.com/Neilblaze/portscope/pkgs/npm/portscope" className="hover:text-primary transition-colors inline-block relative after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-0 hover:after:w-full after:bg-primary after:transition-all after:duration-300">
                   NPM Package
                 </a>
               </li>
@@ -51,7 +51,7 @@ export function Footer() {
 
         <div className="mt-16 pt-8 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
-            Portscope is crafted with <span className="text-blue-500 animate-pulse">💙</span> by Pratyay Banerjee
+            Crafted with <span className="text-blue-500 animate-pulse">💙</span>
           </div>
           <div className="text-sm text-muted-foreground">
             &copy; {new Date().getFullYear()} PortScope. All rights reserved.

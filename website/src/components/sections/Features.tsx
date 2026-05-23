@@ -2,7 +2,7 @@ import { Activity, Cpu, Bot, Zap, PackageOpen, Terminal, ShieldCheck } from 'luc
 
 export function Features() {
   return (
-    <section className="container mx-auto px-4 py-24 border-t border-border/40 relative">
+    <section className="container mx-auto px-4 py-24 border-t border-border/10 relative">
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto relative z-10">

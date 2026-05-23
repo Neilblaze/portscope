@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/npm/v/portscope?color=0088ff&label=npm)](https://www.npmjs.com/package/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.6.1-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -49,13 +49,13 @@ PortScope stays alive after showing your ports — type commands, ask questions 
 ## Install
 
 ```bash
-npm install -g portscope
+npm install -g github:Neilblaze/portscope
 ```
 
 Or run it directly without installing:
 
 ```bash
-npx portscope
+npx github:Neilblaze/portscope
 ```
 
 > [!TIP]
@@ -75,9 +75,9 @@ Shows your port table and drops into an interactive prompt. From there you can:
 
 - **Type a port number** (e.g. `3000`) → inspect it
 - **Type a command** (e.g. `kill 3000`, `ps`, `clean`) → execute it
-- **Ask in natural language** (e.g. `"what's using the most memory?"`) → AI answers and acts
+- **Ask in natural language** (e.g. `"what's using the most CPU?"`) → AI answers and acts
 - **Use slash commands** (`/provider`, `/models`, `/help`) → configure AI
-- **Tab-complete** slash commands — type `/` then press `Tab`
+- **Fish-style Autocomplete** — Intelligent ghost-text suggestions appear as you type (press `→` to accept)
 
 Type `exit` or press `Ctrl+C` to quit.
 
@@ -233,6 +233,7 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 | Command | Description |
 |---------|-------------|
 | `/provider` | Switch AI provider and configure API key |
+| `/revoke` | Revoke a saved API key |
 | `/models` | Browse and select a model (live listing for OpenRouter & NVIDIA NIM) |
 | `/model <name>` | Set model directly |
 | `/status` | Show current provider, model, and key status |
@@ -240,6 +241,7 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 | `/history` | List saved conversation sessions |
 | `/load <n>` | Restore a previous conversation session |
 | `/export [md\|html\|txt]` | Export current conversation to file |
+| `/verbose` | Toggle verbose/streaming mode and detailed telemetry |
 | `/clear` | Reset conversation history |
 | `/help` | List all commands |
 
@@ -284,10 +286,13 @@ Create `portscope.config.json` in your project root or home directory:
 
 </details>
 
-### AI Security
+### Security & Permissions
 
 > [!IMPORTANT]
 > Destructive operations (kill, kill all, clean) **always** require explicit `y/N` confirmation before executing, even when initiated by the AI.
+
+- **Sudo Interception**: PortScope dynamically intercepts permission errors (`EPERM`) when interacting with root-owned processes (e.g. Docker, system daemons). It safely prompts for `sudo` elevation directly in the terminal without requiring a CLI restart.
+- **API Key Masking & Sanitization**: All API keys are automatically masked in the UI and thoroughly sanitized from any error logs to prevent credential leakage.
 
 ---
 

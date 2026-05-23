@@ -17,6 +17,12 @@ code quality and avoid common pitfalls.
 - **Type**: Node.js CLI application (ES modules)
 - **Entry Point**: `src/index.js`
 - **Language**: JavaScript (ES modules)
+- **Architecture**:
+  - `src/commands/` - CLI command handlers
+  - `src/scanner/` - Port, process, and environment detection logic
+  - `src/ai/` - Multi-provider LLM orchestration, conversation loop, and AI tools
+  - `src/ui/` - Custom markdown renderer (`markdown.js`), animations, and ghost-text
+  - `src/config/` - Configuration and credential masking
 - **Key Dependencies**: `chalk`, `cli-table3`, `string-width`
 - **Node Version**: >=18
 
@@ -78,11 +84,13 @@ npm run preview              # Serve production build locally
 
 ### CLI Tool (Root)
 - **Language**: JavaScript (ES modules)
-- **Style**: Functional, minimal dependencies
-- **Error Handling**: Use chalk for colored error messages
-- **Platform Support**: Cross-platform (macOS, Linux, Windows)
+- **Style**: Functional, minimal dependencies, fast execution.
+- **Error Handling**: Use chalk for colored error messages. Always sanitize errors to prevent API key leakage.
+- **Platform Support**: Cross-platform (macOS, Linux, Windows) with graceful fallbacks.
 - **Commands**: Keep command handlers in `src/commands/`
-- **Utilities**: Scanner logic in `src/scanner/`, UI in `src/ui/`
+- **Utilities**: Scanner logic in `src/scanner/`, UI in `src/ui/`, AI logic in `src/ai/`
+- **UI & Output**: Always use the custom Markdown renderer (`src/ui/markdown.js`) for displaying data in the CLI. Output Markdown tables (`|...|...|`) for structured data instead of raw text blocks.
+- **Permissions**: Handle `EPERM` cleanly using the Sudo Interceptor (`src/utils/sudo.js`) rather than crashing or explicitly requiring users to run the entire CLI as root.
 
 ### Website
 - **Language**: TypeScript (`.tsx`/`.ts`)
@@ -127,8 +135,10 @@ No test suite currently configured. If adding tests, use Vitest (already compati
 - ❌ **Don't** add heavy dependencies — the CLI must stay fast
 - ❌ **Don't** use CommonJS (`require`) — this is an ES module project
 - ❌ **Don't** forget `.js` extensions in imports
+- ❌ **Don't** output bland raw text for AI responses. Always leverage Markdown tables and blockquotes for high-fidelity CLI styling.
+- ❌ **Don't** bypass the AI `SYSTEM_PROMPT` rules or the Sudo Interceptor for permission errors.
 - ✅ **Do** test on multiple platforms (macOS, Linux, Windows)
-- ✅ **Do** handle errors gracefully with user-friendly messages
+- ✅ **Do** handle errors gracefully with user-friendly messages and sanitized logs.
 
 ### Website
 - ❌ **Don't** run `npm run build` during development — it breaks HMR
@@ -165,10 +175,13 @@ No test suite currently configured. If adding tests, use Vitest (already compati
 When working with AI agents on this repository:
 
 1. **Identify the target** — Are you working on the CLI tool (root) or the website (`website/`)?
-2. **Use the right language** — JavaScript for CLI, TypeScript for website
-3. **Respect the architecture** — CLI is modular (commands, scanner, ui), website is component-based
-4. **Test your changes** — Run `npm test` for CLI, manually test website in browser
-5. **Keep it fast** — The CLI is designed for speed; avoid adding unnecessary complexity
+2. **Use the right language** — JavaScript for CLI, TypeScript for website.
+3. **Respect the architecture** — CLI is heavily modularized (`commands`, `scanner`, `ui`, `ai`, `config`).
+4. **Use the Design System** — The CLI relies on a custom Markdown engine (`src/ui/markdown.js`). Format AI text beautifully using tables, blockquotes, and emojis.
+5. **Security & Permissions** — Be aware of API key masking, error sanitization, and dynamic `sudo` interception for root processes.
+6. **AI Tools** — When adding capabilities to the AI, define the tool schema in `src/ai/tools.js` and implement the executor in `src/ai/executor.js`.
+7. **Test your changes** — Run `npm test` for CLI, manually test website in browser.
+8. **Keep it fast** — The CLI is designed for speed; avoid adding unnecessary complexity or large third-party dependencies.
 
 ---
 

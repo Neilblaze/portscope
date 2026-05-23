@@ -1,6 +1,7 @@
 import CrypticFluidBackground from '@/components/ui/cryptic-fluid-background';
 import { Navbar } from '@/components/sections/Navbar';
 import { Hero } from '@/components/sections/Hero';
+import { TrustedBy } from '@/components/sections/TrustedBy';
 import { Features } from '@/components/sections/Features';
 import { Footer } from '@/components/sections/Footer';
 
@@ -13,6 +14,7 @@ function App() {
 
       <main className="flex-1">
         <Hero />
+        <TrustedBy />
         <Features />
         <Footer />
       </main>
