@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.6.2-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.6.3-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -80,6 +80,9 @@ Shows your port table and drops into an interactive prompt. From there you can:
 - **Fish-style Autocomplete** — Intelligent ghost-text suggestions appear as you type (press `→` to accept)
 
 Type `exit` or press `Ctrl+C` to quit.
+
+> [!TIP]
+> You can launch PortScope with the `--verbose` flag (e.g. `portscope --verbose`) to enable real-time SSE streaming for AI responses, complete with token metrics and latency stats.
 
 ### Show all listening ports
 
@@ -195,7 +198,7 @@ portscope watch         # Monitor port changes in real-time (with live traffic m
 portscope chat          # Jump directly into AI chat mode
 ```
 
-**Watch mode** displays active connection counts and request rates (req/s) for each port in real-time, helping identify load issues and monitor live traffic without additional tools.
+**Watch mode** displays live metrics for every active port including Memory Usage (RAM), Process Uptime, Bind Address (127.0.0.1 vs 0.0.0.0), Process ID (PID), active connection counts, request rates (req/s), and real-time Bandwidth / Throughput (`↑...B/s ↓...B/s`), helping identify load issues and monitor live traffic without additional/external tools.
 
 > [!TIP]
 > Aliases `ports` and `whoisonport` also work: `ports kill 3000`, `whoisonport 8080`
@@ -205,6 +208,9 @@ portscope chat          # Jump directly into AI chat mode
 ## AI Chat
 
 PortScope's AI lets you manage ports with natural language — *"kill whatever's on 3000"*, *"show me what's using the most CPU"*, *"stop all dev servers"*. It works right from the default interactive prompt, or via `portscope chat` for a dedicated AI session.
+
+> [!TIP]
+> **System Telemetry**: The AI has direct access to a `get_system_stats()` tool. You can ask it to diagnose machine-level performance bottlenecks, check CPU load averages, or analyze memory pressure.
 
 ### Supported Providers
 

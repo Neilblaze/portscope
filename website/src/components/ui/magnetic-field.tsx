@@ -127,16 +127,13 @@ export function MagneticField({
       const easing = easingRef.current;
       const aspect = aspectRef.current;
       const cursorLerp = Math.min(easing * 3, 0.35);
-      const fadeSpeed = 0.14; // lerp speed for opacity transitions
+      const fadeSpeed = 0.14;
 
       smoothX += (targetMouseX - smoothX) * cursorLerp;
       smoothY += (targetMouseY - smoothY) * cursorLerp;
 
       const cursorActive = targetMouseX > -999;
 
-      // ── Find the single nearest point ─────────────────────────
-      // Only consider points within spacing*1.5 so cursor far from
-      // all points doesn't fade any of them
       let nearestIdx = -1;
       let nearestDist = spacing * 1.5;
 
@@ -150,22 +147,17 @@ export function MagneticField({
         }
       }
 
-      // ── Update per-point opacity ───────────────────────────────
-      // Only the nearest point fades to 0; every other point
-      // returns to 1. No neighbouring points are touched.
       for (let i = 0; i < points.length; i++) {
         const target = i === nearestIdx ? 0 : 1;
         points[i].opacity += (target - points[i].opacity) * fadeSpeed;
       }
 
-      // ── Update angles + batch-draw fully opaque points ────────
       ctx.lineWidth = lineThickness;
       ctx.lineCap = 'round';
 
       let currentColor = '';
 
       points.forEach((point, idx) => {
-        // Angle update runs for every point regardless of visibility
         const dx = smoothX - point.x;
         const dy = smoothY - point.y;
 
@@ -195,10 +187,8 @@ export function MagneticField({
 
         point.currentAngle += diff * easing;
 
-        // Skip fading point from the batch — it gets its own draw call below
         if (idx === nearestIdx || point.opacity < 0.999) return;
 
-        // Batch fully opaque points by color
         if (point.color !== currentColor) {
           if (currentColor !== '') ctx.stroke();
           ctx.beginPath();
@@ -215,11 +205,9 @@ export function MagneticField({
 
       if (currentColor !== '') ctx.stroke();
 
-      // ── Draw the single fading point with globalAlpha ─────────
-      // Isolated draw call — zero impact on any other point's render
       for (let i = 0; i < points.length; i++) {
         const point = points[i];
-        if (point.opacity >= 0.999) continue; // skip fully visible ones
+        if (point.opacity >= 0.999) continue;
 
         ctx.globalAlpha = Math.max(0, point.opacity);
         ctx.beginPath();
@@ -235,9 +223,8 @@ export function MagneticField({
         ctx.stroke();
       }
 
-      ctx.globalAlpha = 1; // always restore before dot + next frame
+      ctx.globalAlpha = 1;
 
-      // ── Cursor dot ────────────────────────────────────────────
       if (cursorActive && smoothX > -999) {
         ctx.beginPath();
         ctx.arc(smoothX, smoothY, dotRadiusRef.current, 0, Math.PI * 2);

@@ -96,9 +96,15 @@ export async function interactiveMode(showAll, verbose = false) {
     completer: slashCompleter,
   });
 
+  let isExecuting = false;
+
   rl.on("SIGINT", () => {
-    console.log(chalk.gray("\n  👋 Goodbye!\n"));
-    rl.close();
+    if (isExecuting) {
+      process.emit("SIGINT");
+    } else {
+      console.log(chalk.gray("\n  👋 Goodbye!\n"));
+      rl.close();
+    }
   });
 
   const promptPrefix = chalk.rgb(100, 200, 255)("  ❯ ");
@@ -112,95 +118,87 @@ export async function interactiveMode(showAll, verbose = false) {
     }
 
     rl.question(promptPrefix, async (input) => {
-      const trimmed = input.trim();
-      if (!trimmed) {
-        if (!rl.closed) {
-          prompt();
+      isExecuting = true;
+      try {
+        const trimmed = input.trim();
+        if (!trimmed) {
+          return;
         }
-        return;
-      }
 
-      if (["exit", "quit", ".exit"].includes(trimmed.toLowerCase())) {
-        console.log(chalk.gray("\n  👋 Goodbye!\n"));
-        rl.close();
-        return;
-      }
-
-      if (trimmed.startsWith("/")) {
-        const result = await handleSlashCommand(trimmed, state, messages, rl);
-        if (result === "exit") {
+        if (["exit", "quit", ".exit"].includes(trimmed.toLowerCase())) {
+          console.log(chalk.gray("\n  👋 Goodbye!\n"));
           rl.close();
           return;
         }
-        if (!rl.closed) {
-          prompt();
+
+        if (trimmed.startsWith("/")) {
+          const result = await handleSlashCommand(trimmed, state, messages, rl);
+          if (result === "exit") {
+            rl.close();
+          }
+          return;
         }
-        return;
-      }
 
-      const handled = await handleDirectCommand(trimmed, rl);
-      if (handled) {
-        if (!rl.closed) {
-          prompt();
+        const handled = await handleDirectCommand(trimmed, rl);
+        if (handled) {
+          return;
         }
-        return;
-      }
 
-      if (!state.apiKey) {
-        console.log();
-        console.log(
-          chalk.yellow("  💬 To use natural language, set up an AI provider with ") +
-          chalk.cyan("/provider"),
-        );
-        console.log(
-          chalk.dim("  You can still use direct commands: ") +
-          chalk.cyan("kill <port>") + chalk.dim(", ") +
-          chalk.cyan("<port>") + chalk.dim(", ") +
-          chalk.cyan("ps") + chalk.dim(", ") +
-          chalk.cyan("clean") + chalk.dim(", ") +
-          chalk.cyan("watch") + chalk.dim(", ") +
-          chalk.cyan("logs <port>"),
-        );
-        console.log(chalk.dim("  Type ") + chalk.cyan("help") + chalk.dim(" or ") + chalk.cyan("/help") + chalk.dim(" for the full command list."));
-        console.log();
-        if (!rl.closed) {
-          prompt();
+        if (!state.apiKey) {
+          console.log();
+          console.log(
+            chalk.yellow("  💬 To use natural language, set up an AI provider with ") +
+            chalk.cyan("/provider"),
+          );
+          console.log(
+            chalk.dim("  You can still use direct commands: ") +
+            chalk.cyan("kill <port>") + chalk.dim(", ") +
+            chalk.cyan("<port>") + chalk.dim(", ") +
+            chalk.cyan("ps") + chalk.dim(", ") +
+            chalk.cyan("clean") + chalk.dim(", ") +
+            chalk.cyan("watch") + chalk.dim(", ") +
+            chalk.cyan("logs <port>"),
+          );
+          console.log(chalk.dim("  Type ") + chalk.cyan("help") + chalk.dim(" or ") + chalk.cyan("/help") + chalk.dim(" for the full command list."));
+          console.log();
+          return;
         }
-        return;
-      }
 
-      const { text, images, errors } = extractImages(trimmed);
-      for (const err of errors) {
-        console.log(chalk.yellow(`  ⚠ ${err}`));
-      }
+        const { text, images, errors } = extractImages(trimmed);
+        for (const err of errors) {
+          console.log(chalk.yellow(`  ⚠ ${err}`));
+        }
 
-      if (images.length > 0 && state.config.ai.provider === "ollama") {
-        console.log(chalk.yellow(`  ⚠ Ollama vision not currently supported. Images ignored.\n`));
-        images.length = 0;
-      }
+        if (images.length > 0 && state.config.ai.provider === "ollama") {
+          console.log(chalk.yellow(`  ⚠ Ollama vision not currently supported. Images ignored.\n`));
+          images.length = 0;
+        }
 
-      if (images.length > 0) {
-        const provider = state.config.ai.provider;
-        let content;
-        if (provider === "anthropic") {
-          content = toAnthropicImageContent(text, images);
+        if (images.length > 0) {
+          const provider = state.config.ai.provider;
+          let content;
+          if (provider === "anthropic") {
+            content = toAnthropicImageContent(text, images);
+          } else {
+            content = toOpenAIImageContent(text, images);
+          }
+          messages.push({ role: "user", content, _text: text });
         } else {
-          content = toOpenAIImageContent(text, images);
+          messages.push({ role: "user", content: text });
         }
-        messages.push({ role: "user", content, _text: text });
-      } else {
-        messages.push({ role: "user", content: text });
-      }
 
-      try {
-        await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
-        saveConversation(state.conversationId, state.config, messages);
-      } catch (err) {
-        messages.pop();
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
-      }
-      if (!rl.closed) {
-        prompt();
+        try {
+          await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
+          saveConversation(state.conversationId, state.config, messages);
+        } catch (err) {
+          messages.pop();
+          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        }
+      } finally {
+        isExecuting = false;
+        if (!rl.closed) {
+          prompt();
+        }
       }
     });
   };

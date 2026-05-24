@@ -1,5 +1,5 @@
 import { getListeningPorts, watchPorts } from "../scanner/ports.js";
-import { displayWatchEvent, displayWatchHeader } from "../ui/watch.js";
+import { displayWatchEvent, displayWatchHeader, getWatchSeparator } from "../ui/watch.js";
 import chalk from "chalk";
 
 export async function watchCommand() {
@@ -34,7 +34,9 @@ export async function watchCommand() {
   await new Promise((resolve) => {
     const sigintHandler = () => {
       clearInterval(interval);
-      console.log(chalk.gray("\n\n  Stopped watching.\n"));
+      console.log(getWatchSeparator());
+      console.log(`  ${chalk.red("■")} ${chalk.white.bold("Watch mode stopped")}`);
+      console.log(chalk.dim("    Returned to interactive prompt.\n"));
       process.off("SIGINT", sigintHandler);
       resolve();
     };

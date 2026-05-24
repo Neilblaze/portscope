@@ -2,8 +2,12 @@
 
 All notable changes to PortScope will be documented in this file.
 
-## [1.6.2] - 2026-05-24
+## [1.6.3] - 2026-05-25
 
+### Fixed
+- **Ctrl+C Ghost Process Fix** — Resolved a critical UI lifecycle bug where hitting `Ctrl+C` during `watch` mode inside the interactive REPL would incorrectly close the global `readline` interface. The `watch` interval would continue running as a hidden "ghost" process, dumping logs sporadically. `Ctrl+C` now correctly forwards `SIGINT` directly to the active command, cleanly stopping `watch` and instantly returning you to the main prompt.
+
+## [1.6.2] - 2026-05-24
 ### Added
 - **Watch Mode Metrics Upgrade** — Greatly enhanced `watch` mode with live readouts for Memory Usage (RAM), Process Uptime, Bind Address (127.0.0.1 vs 0.0.0.0 network exposure), Process ID (PID), and active Bandwidth / Throughput (`↑...B/s ↓...B/s`).
 
