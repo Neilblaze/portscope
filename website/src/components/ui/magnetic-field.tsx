@@ -6,9 +6,12 @@ export interface MagneticFieldProps {
   lineLength?: number;
   lineThickness?: number;
   forceRadius?: number;
+  forceAspect?: number;
   easingSpeed?: number;
   color?: string;
   gradient?: [number, number, number][];
+  dotRadius?: number;
+  dotColor?: string;
   className?: string;
 }
 
@@ -17,20 +20,34 @@ interface Point {
   y: number;
   currentAngle: number;
   color: string;
+  opacity: number; // only ever < 1 for the single nearest point
 }
 
 export function MagneticField({
   spacing = 25,
   lineLength = 14,
   lineThickness = 3,
-  forceRadius = 250,
-  easingSpeed = 0.1,
+  forceRadius = 300,
+  forceAspect = 2.0,
+  easingSpeed = 0.085,
   color = 'rgba(255, 255, 255, 0.9)',
   gradient,
+  dotRadius = 5,
+  dotColor = '#000000',
   className,
 }: MagneticFieldProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const easingRef = useRef(easingSpeed);
+  const aspectRef = useRef(forceAspect);
+  const dotRadiusRef = useRef(dotRadius);
+  const dotColorRef = useRef(dotColor);
+
+  useEffect(() => { easingRef.current = easingSpeed; }, [easingSpeed]);
+  useEffect(() => { aspectRef.current = forceAspect; }, [forceAspect]);
+  useEffect(() => { dotRadiusRef.current = dotRadius; }, [dotRadius]);
+  useEffect(() => { dotColorRef.current = dotColor; }, [dotColor]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,16 +62,15 @@ export function MagneticField({
     let width = 0;
     let height = 0;
 
-    let mouseX = -1000;
-    let mouseY = -1000;
-    let targetMouseX = -1000;
-    let targetMouseY = -1000;
+    let targetMouseX = -9999;
+    let targetMouseY = -9999;
+    let smoothX = -9999;
+    let smoothY = -9999;
 
     const initPoints = () => {
       points = [];
       const cols = Math.floor(width / spacing);
       const rows = Math.floor(height / spacing);
-
       const offsetX = (width - cols * spacing) / 2 + spacing / 2;
       const offsetY = (height - rows * spacing) / 2 + spacing / 2;
 
@@ -64,38 +80,28 @@ export function MagneticField({
           const y = offsetY + j * spacing;
 
           let pointColor = color;
-          if (gradient && gradient.length > 0) {
-            const t = width > 0 ? x / width : 0;
-            const clampedT = Math.max(0, Math.min(1, t));
 
+          if (gradient && gradient.length > 0) {
+            const t = Math.max(0, Math.min(1, width > 0 ? x / width : 0));
             if (gradient.length === 1) {
               pointColor = `rgba(${gradient[0][0]}, ${gradient[0][1]}, ${gradient[0][2]}, 0.8)`;
             } else {
-              const scaledT = clampedT * (gradient.length - 1);
+              const scaledT = t * (gradient.length - 1);
               const index = Math.floor(scaledT);
               const nextIndex = Math.min(index + 1, gradient.length - 1);
               const factor = scaledT - index;
-
               const c1 = gradient[index];
               const c2 = gradient[nextIndex];
-
               const r = Math.round(c1[0] + (c2[0] - c1[0]) * factor);
               const g = Math.round(c1[1] + (c2[1] - c1[1]) * factor);
               const b = Math.round(c1[2] + (c2[2] - c1[2]) * factor);
-
               const alphaMatch = color.match(/rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\)/);
               const alpha = alphaMatch ? alphaMatch[1] : '0.8';
-
               pointColor = `rgba(${r}, ${g}, ${b}, ${alpha})`;
             }
           }
 
-          points.push({
-            x,
-            y,
-            currentAngle: 0,
-            color: pointColor
-          });
+          points.push({ x, y, currentAngle: 0, color: pointColor, opacity: 1 });
         }
       }
     };
@@ -108,7 +114,7 @@ export function MagneticField({
       const dpr = window.devicePixelRatio || 1;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
-      ctx.scale(dpr, dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
@@ -118,28 +124,104 @@ export function MagneticField({
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
 
-      mouseX += (targetMouseX - mouseX) * (easingSpeed * 2);
-      mouseY += (targetMouseY - mouseY) * (easingSpeed * 2);
+      const easing = easingRef.current;
+      const aspect = aspectRef.current;
+      const cursorLerp = Math.min(easing * 3, 0.35);
+      const fadeSpeed = 0.14; // lerp speed for opacity transitions
 
-      points.forEach((point) => {
-        const dx = mouseX - point.x;
-        const dy = mouseY - point.y;
-        const dist = Math.hypot(dx, dy);
+      smoothX += (targetMouseX - smoothX) * cursorLerp;
+      smoothY += (targetMouseY - smoothY) * cursorLerp;
+
+      const cursorActive = targetMouseX > -999;
+
+      // ── Find the single nearest point ─────────────────────────
+      // Only consider points within spacing*1.5 so cursor far from
+      // all points doesn't fade any of them
+      let nearestIdx = -1;
+      let nearestDist = spacing * 1.5;
+
+      if (cursorActive) {
+        for (let i = 0; i < points.length; i++) {
+          const d = Math.hypot(smoothX - points[i].x, smoothY - points[i].y);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestIdx = i;
+          }
+        }
+      }
+
+      // ── Update per-point opacity ───────────────────────────────
+      // Only the nearest point fades to 0; every other point
+      // returns to 1. No neighbouring points are touched.
+      for (let i = 0; i < points.length; i++) {
+        const target = i === nearestIdx ? 0 : 1;
+        points[i].opacity += (target - points[i].opacity) * fadeSpeed;
+      }
+
+      // ── Update angles + batch-draw fully opaque points ────────
+      ctx.lineWidth = lineThickness;
+      ctx.lineCap = 'round';
+
+      let currentColor = '';
+
+      points.forEach((point, idx) => {
+        // Angle update runs for every point regardless of visibility
+        const dx = smoothX - point.x;
+        const dy = smoothY - point.y;
 
         let targetAngle = 0;
 
-        if (dist < forceRadius) {
-          const force = 1 - Math.pow(dist / forceRadius, 2); // Quadratic falloff for smoother easing
-          let angleToMouse = Math.atan2(dy, dx);
+        if (cursorActive) {
+          const ex = dx / (forceRadius * aspect);
+          const ey = dy / forceRadius;
+          const ellipDist = Math.sqrt(ex * ex + ey * ey);
 
-          while (angleToMouse > Math.PI / 2) angleToMouse -= Math.PI;
-          while (angleToMouse < -Math.PI / 2) angleToMouse += Math.PI;
+          if (ellipDist < 1 && (dx !== 0 || dy !== 0)) {
+            const influence = Math.pow(1 - ellipDist, 1.65);
 
-          targetAngle = angleToMouse * force;
+            let angle = Math.atan2(dy, dx);
+            while (angle > Math.PI / 2) angle -= Math.PI;
+            while (angle < -Math.PI / 2) angle += Math.PI;
+
+            targetAngle = angle * influence;
+          }
         }
 
-        point.currentAngle += (targetAngle - point.currentAngle) * easingSpeed;
+        let diff = targetAngle - point.currentAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (diff > Math.PI / 2) diff -= Math.PI;
+        if (diff < -Math.PI / 2) diff += Math.PI;
 
+        point.currentAngle += diff * easing;
+
+        // Skip fading point from the batch — it gets its own draw call below
+        if (idx === nearestIdx || point.opacity < 0.999) return;
+
+        // Batch fully opaque points by color
+        if (point.color !== currentColor) {
+          if (currentColor !== '') ctx.stroke();
+          ctx.beginPath();
+          currentColor = point.color;
+          ctx.strokeStyle = currentColor;
+        }
+
+        const cos = Math.cos(point.currentAngle);
+        const sin = Math.sin(point.currentAngle);
+        const half = lineLength / 2;
+        ctx.moveTo(point.x - cos * half, point.y - sin * half);
+        ctx.lineTo(point.x + cos * half, point.y + sin * half);
+      });
+
+      if (currentColor !== '') ctx.stroke();
+
+      // ── Draw the single fading point with globalAlpha ─────────
+      // Isolated draw call — zero impact on any other point's render
+      for (let i = 0; i < points.length; i++) {
+        const point = points[i];
+        if (point.opacity >= 0.999) continue; // skip fully visible ones
+
+        ctx.globalAlpha = Math.max(0, point.opacity);
         ctx.beginPath();
         ctx.strokeStyle = point.color;
         ctx.lineWidth = lineThickness;
@@ -147,29 +229,40 @@ export function MagneticField({
 
         const cos = Math.cos(point.currentAngle);
         const sin = Math.sin(point.currentAngle);
-
-        ctx.moveTo(point.x - cos * (lineLength / 2), point.y - sin * (lineLength / 2));
-        ctx.lineTo(point.x + cos * (lineLength / 2), point.y + sin * (lineLength / 2));
+        const half = lineLength / 2;
+        ctx.moveTo(point.x - cos * half, point.y - sin * half);
+        ctx.lineTo(point.x + cos * half, point.y + sin * half);
         ctx.stroke();
-      });
+      }
+
+      ctx.globalAlpha = 1; // always restore before dot + next frame
+
+      // ── Cursor dot ────────────────────────────────────────────
+      if (cursorActive && smoothX > -999) {
+        ctx.beginPath();
+        ctx.arc(smoothX, smoothY, dotRadiusRef.current, 0, Math.PI * 2);
+        ctx.fillStyle = dotColorRef.current;
+        ctx.fill();
+      }
 
       animationFrameId = requestAnimationFrame(draw);
     };
 
-    const handleMouseMove = (e: MouseEvent) => {
+    const getPos = (clientX: number, clientY: number) => {
       const rect = canvas.getBoundingClientRect();
-      targetMouseX = e.clientX - rect.left;
-      targetMouseY = e.clientY - rect.top;
+      return { x: clientX - rect.left, y: clientY - rect.top };
     };
 
-    const handleMouseLeave = () => {
-      targetMouseX = -1000;
-      targetMouseY = -1000;
-    };
+    const handleMouseMove = (e: MouseEvent) => { const p = getPos(e.clientX, e.clientY); targetMouseX = p.x; targetMouseY = p.y; };
+    const handleMouseLeave = () => { targetMouseX = -9999; targetMouseY = -9999; };
+    const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); const t = e.touches[0]; if (!t) return; const p = getPos(t.clientX, t.clientY); targetMouseX = p.x; targetMouseY = p.y; };
+    const handleTouchEnd = () => { targetMouseX = -9999; targetMouseY = -9999; };
 
     window.addEventListener('resize', resize);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseleave', handleMouseLeave);
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd);
 
     resize();
     draw();
@@ -178,20 +271,19 @@ export function MagneticField({
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('mouseleave', handleMouseLeave);
+      canvas.removeEventListener('touchmove', handleTouchMove);
+      canvas.removeEventListener('touchend', handleTouchEnd);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [spacing, lineLength, lineThickness, forceRadius, easingSpeed, color]);
+  }, [spacing, lineLength, lineThickness, forceRadius, color, gradient]);
 
   return (
     <div
       ref={containerRef}
-      className={cn("w-full overflow-hidden pointer-events-none relative", className)}
+      className={cn('w-full h-full overflow-hidden relative', className)}
       style={{ touchAction: 'none' }}
     >
-      <canvas
-        ref={canvasRef}
-        className="block pointer-events-auto w-full h-full"
-      />
+      <canvas ref={canvasRef} className="block w-full h-full" />
     </div>
   );
 }
