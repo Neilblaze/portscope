@@ -97,9 +97,13 @@ export function getListeningPortsRaw() {
     const pid = parseInt(parts[parts.length - 1], 10);
     if (isNaN(pid) || pid === 0) continue;
 
+    const bindMatch = localAddr.match(/^([^:]+):/);
+    let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
+    if (bindAddress === "*" || bindAddress === "*.*" || bindAddress === "[::]") bindAddress = "0.0.0.0";
+
     portMap.set(port, true);
     pidsToResolve.add(pid);
-    entries.push({ port, pid, processName: "" });
+    entries.push({ port, pid, processName: "", bindAddress });
   }
 
   const processNames = getProcessNames([...pidsToResolve]);
@@ -311,13 +315,13 @@ export function getProcessTree(pid) {
 
 export function getConnectionCounts() {
   const connectionMap = new Map();
-  
+
   try {
     const raw = exec("netstat -ano -p TCP");
     if (!raw) return connectionMap;
 
     const lines = raw.split(/\r?\n/).filter((l) => l.includes("ESTABLISHED"));
-    
+
     for (const line of lines) {
       const parts = line.trim().split(/\s+/);
       if (parts.length < 5) continue;
@@ -332,5 +336,9 @@ export function getConnectionCounts() {
   } catch { }
 
   return connectionMap;
+}
+
+export function getThroughput(pids) {
+  return new Map();
 }
 

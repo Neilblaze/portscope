@@ -57,8 +57,13 @@ export function getListeningPortsRaw() {
           const processName = nameMatch
             ? nameMatch[1]
             : getProcessNameFromProc(pid);
+
+          const bindMatch = localAddr.match(/^([^:]+):/);
+          let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
+          if (bindAddress === "*" || bindAddress === "*.*") bindAddress = "0.0.0.0";
+
           portMap.set(port, true);
-          entries.push({ port, pid, processName });
+          entries.push({ port, pid, processName, bindAddress });
         }
       }
     } catch { }
@@ -87,8 +92,13 @@ export function getListeningPortsRaw() {
         const pidProgMatch = pidProgram.match(/^(\d+)\/(.+)$/);
         if (pidProgMatch) {
           const pid = parseInt(pidProgMatch[1], 10);
+
+          const bindMatch = localAddr.match(/^([^:]+):/);
+          let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
+          if (bindAddress === "*" || bindAddress === "*.*") bindAddress = "0.0.0.0";
+
           portMap.set(port, true);
-          entries.push({ port, pid, processName: pidProgMatch[2] });
+          entries.push({ port, pid, processName: pidProgMatch[2], bindAddress });
         }
       }
     } catch { }
@@ -266,7 +276,7 @@ export function getProcessTree(pid) {
 
 export function getConnectionCounts() {
   const connectionMap = new Map();
-  
+
   if (commandExists("ss")) {
     try {
       const raw = execSync("ss -tn state established 2>/dev/null", {
@@ -312,4 +322,8 @@ export function getConnectionCounts() {
   }
 
   return connectionMap;
+}
+
+export function getThroughput(pids) {
+  return new Map();
 }

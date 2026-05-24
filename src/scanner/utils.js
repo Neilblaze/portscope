@@ -240,3 +240,11 @@ export function formatMemory(rssKB) {
   if (rssKB > 1024) return `${(rssKB / 1024).toFixed(1)} MB`;
   return `${rssKB} KB`;
 }
+
+export function formatBytes(bytes) {
+  if (bytes === 0) return "0B/s";
+  const k = 1024;
+  const sizes = ["B/s", "KB/s", "MB/s", "GB/s"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + sizes[i];
+}

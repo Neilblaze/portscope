@@ -31,9 +31,13 @@ export function getListeningPortsRaw() {
     if (!portMatch) continue;
     const port = parseInt(portMatch[1], 10);
 
+    const bindMatch = nameField.match(/^([^:]+):/);
+    let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
+    if (bindAddress === "*" || bindAddress === "*.*") bindAddress = "0.0.0.0";
+
     if (portMap.has(port)) continue;
     portMap.set(port, true);
-    entries.push({ port, pid, processName });
+    entries.push({ port, pid, processName, bindAddress });
   }
 
   return entries;
@@ -199,4 +203,41 @@ export function getConnectionCounts() {
     }
   } catch { }
   return connectionMap;
+}
+
+export function getThroughput(pids) {
+  const map = new Map();
+  if (pids.length === 0) return map;
+  
+  try {
+    const raw = execSync("nettop -P -L 1 -J bytes_in,bytes_out 2>/dev/null", {
+      encoding: "utf8",
+      timeout: 3000
+    });
+    
+    const pidSet = new Set(pids);
+    const lines = raw.trim().split("\n").slice(1);
+    for (const line of lines) {
+      if (!line) continue;
+      const parts = line.split(",");
+      if (parts.length < 3) continue;
+      
+      const namePid = parts[0];
+      const match = namePid.match(/\.(\d+)$/);
+      if (!match) continue;
+      const pid = parseInt(match[1], 10);
+      
+      if (pidSet.has(pid)) {
+        const bytesIn = parseInt(parts[1], 10) || 0;
+        const bytesOut = parseInt(parts[2], 10) || 0;
+        
+        const existing = map.get(pid) || { bytesIn: 0, bytesOut: 0 };
+        map.set(pid, {
+          bytesIn: existing.bytesIn + bytesIn,
+          bytesOut: existing.bytesOut + bytesOut
+        });
+      }
+    }
+  } catch {}
+  return map;
 }

@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import { formatFramework } from "./format.js";
+import { formatBytes } from "../scanner/utils.js";
 import { renderBanner } from "./banner.js";
 
 
@@ -10,28 +11,98 @@ export function displayWatchEvent(type, info, maxWidth = 10) {
   const paddedWidth = maxWidth + 2;
 
   if (type === "new") {
-    const processName = info.processName || "unknown";
-    const paddedProcess = processName.padEnd(paddedWidth, " ");
+    const nameAndPid = `${info.processName || "unknown"} [${info.pid}]`;
+    const paddedProcess = chalk.white(nameAndPid.padEnd(paddedWidth, " "));
+    const memoryStr = chalk.gray((info.memory || "—").padEnd(8, " "));
+    const bindRaw = info.bindAddress || "0.0.0.0";
+    const bindPadded = bindRaw.padEnd(9, " ");
+    const coloredBind = bindRaw === "0.0.0.0" || bindRaw === "[::]" ? chalk.yellow(bindPadded) : chalk.gray(bindPadded);
+    const uptimeStr = chalk.gray((info.uptime || "—").padEnd(7, " "));
+    
     const connections = info.connections !== undefined ? info.connections : 0;
     const connStr = String(connections).padStart(3, " ");
     
+    const bIn = formatBytes(info.bytesInPerSec || 0);
+    const bOut = formatBytes(info.bytesOutPerSec || 0);
+    const tpStr = ` │ ${chalk.yellow("↑")}${chalk.gray(bOut.padEnd(8, " "))} ${chalk.green("↓")}${chalk.gray(bIn.padEnd(8, " "))}`;
+
+    let rateStr = "";
+    if (info.requestRate > 0) {
+      let text = "";
+      const r = info.requestRate;
+      
+      let bestReq = Math.round(r);
+      let bestSec = 1;
+
+      for (let s = 1; s <= 60; s++) {
+        const req = Math.round(r * s);
+        const error = Math.abs(r - req / s);
+        if (error < 0.05 && req > 0) {
+          bestReq = req;
+          bestSec = s;
+          break;
+        }
+      }
+
+      if (bestSec === 1 && r < 1 && r > 0) {
+        text = `1 req/${Math.round(1 / r)}s`;
+      } else if (bestSec === 1) {
+        text = `${bestReq} req/s`;
+      } else {
+        text = `${bestReq} req/${bestSec}s`;
+      }
+      rateStr = ` │ ${chalk.magenta(text.padStart(11, " "))}`;
+    }
+
     console.log(
-      `  ${timestamp} ${chalk.green("▲ NEW")}    :${chalk.white.bold(String(info.port).padEnd(5))} ← ${chalk.white(paddedProcess)} │ ${chalk.cyan(connStr)} conn │`,
+      `  ${timestamp} ${chalk.green("▲ NEW")} :${chalk.white.bold(String(info.port).padEnd(5))} ← ${paddedProcess} │ ${memoryStr} │ ${coloredBind} │ ${uptimeStr} │ ${chalk.cyan(connStr)} conn${tpStr}${rateStr}`,
     );
   } else if (type === "update") {
-    const processName = info.processName || "unknown";
-    const paddedProcess = processName.padEnd(paddedWidth, " ");
+    const nameAndPid = `${info.processName || "unknown"} [${info.pid}]`;
+    const paddedProcess = chalk.white(nameAndPid.padEnd(paddedWidth, " "));
+    const memoryStr = chalk.gray((info.memory || "—").padEnd(8, " "));
+    const bindRaw = info.bindAddress || "0.0.0.0";
+    const bindPadded = bindRaw.padEnd(9, " ");
+    const coloredBind = bindRaw === "0.0.0.0" || bindRaw === "[::]" ? chalk.yellow(bindPadded) : chalk.gray(bindPadded);
+    const uptimeStr = chalk.gray((info.uptime || "—").padEnd(7, " "));
+
     const connections = info.connections !== undefined ? info.connections : 0;
     const connStr = String(connections).padStart(3, " ");
     
     let rateStr = "";
     if (info.requestRate > 0) {
-      const rate = info.requestRate.toFixed(1);
-      rateStr = ` │ ${chalk.magenta(rate.padStart(5, " "))} req/s`;
+      let text = "";
+      const r = info.requestRate;
+      
+      let bestReq = Math.round(r);
+      let bestSec = 1;
+
+      for (let s = 1; s <= 60; s++) {
+        const req = Math.round(r * s);
+        const error = Math.abs(r - req / s);
+        if (error < 0.05 && req > 0) {
+          bestReq = req;
+          bestSec = s;
+          break;
+        }
+      }
+
+      if (bestSec === 1 && r < 1 && r > 0) {
+        text = `1 req/${Math.round(1 / r)}s`;
+      } else if (bestSec === 1) {
+        text = `${bestReq} req/s`;
+      } else {
+        text = `${bestReq} req/${bestSec}s`;
+      }
+      rateStr = ` │ ${chalk.magenta(text.padStart(11, " "))}`;
     }
     
+    const bIn = formatBytes(info.bytesInPerSec || 0);
+    const bOut = formatBytes(info.bytesOutPerSec || 0);
+    const tpStr = ` │ ${chalk.yellow("↑")}${chalk.gray(bOut.padEnd(8, " "))} ${chalk.green("↓")}${chalk.gray(bIn.padEnd(8, " "))}`;
+    
     console.log(
-      `  ${timestamp} ${chalk.blue("◆ UPDATE")} :${chalk.white.bold(String(info.port).padEnd(5))} ← ${chalk.white(paddedProcess)} │ ${chalk.cyan(connStr)} conn${rateStr}`,
+      `  ${timestamp} ${chalk.blue("◆ UP ")} :${chalk.white.bold(String(info.port).padEnd(5))} ← ${paddedProcess} │ ${memoryStr} │ ${coloredBind} │ ${uptimeStr} │ ${chalk.cyan(connStr)} conn${tpStr}${rateStr}`,
     );
   } else if (type === "removed") {
     console.log(

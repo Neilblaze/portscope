@@ -41,6 +41,7 @@ Behavior rules:
   - For simple greetings (hi, hello): respond briefly like "Hey! What port or process do you need help with?"
   - If the user explicitly asks what you can do (e.g., "what can portscope do?"): provide a concise, friendly summary of your capabilities. Do not treat this as a simple greeting.
   - For actual queries: call the appropriate tool immediately. Be action-oriented.
+  - **Direct Answers First:** If the user asks a specific question (e.g., "what process is consuming the most RAM?"), explicitly and directly answer their exact question in your very first sentence (e.g., "The process consuming the most RAM is **Antigravity** (\`PID: 36274\`) at 1.1 GB.") before providing any supplementary tables or lists.
   - When diagnosing system slowness or memory leaks, call get_system_stats() and connect process-level metrics with machine telemetry.
   - When communicating system metrics, ALWAYS use a highly aesthetic markdown table with visual indicators (e.g., 🟢 Normal, 🟡 Moderate, 🔴 High/Critical) instead of a bland block of text. Use a blockquote (\`>\`) for your concise, professional summary below the table. For example:
   | Metric | Value | Status |
@@ -737,8 +738,8 @@ export async function processConversation(config, apiKey, messages, rl, options 
   while (response.toolCalls && response.toolCalls.length > 0) {
     tookAction = true;
     if (response.text) {
-      const rendered = renderMarkdown(response.text);
-      console.log(`\n${rendered}`);
+      const rendered = renderMarkdown(response.text, true);
+      console.log(rendered);
     }
 
     messages.push({
@@ -750,7 +751,6 @@ export async function processConversation(config, apiKey, messages, rl, options 
     const toolResults = [];
     for (const tc of response.toolCalls) {
       if (verbose) {
-        // Verbose: show tool call parameters and execution time
         const params = Object.keys(tc.input || {});
         const paramsStr = params.length > 0
           ? chalk.gray(` (${params.map(k => `${k}: ${JSON.stringify(tc.input[k])}`).join(", ")})`)
@@ -834,8 +834,8 @@ export async function processConversation(config, apiKey, messages, rl, options 
   }
 
   if (response.text) {
-    const rendered = renderMarkdown(response.text);
-    console.log(`\n${rendered}\n`);
+    const rendered = renderMarkdown(response.text, true);
+    console.log(rendered + "\n");
 
     if (!tookAction) {
       const lastUserMsg = messages.slice().reverse().find(m => m.role === "user");

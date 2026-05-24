@@ -2,6 +2,16 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.6.2] - 2026-05-24
+
+### Added
+- **Watch Mode Metrics Upgrade** — Greatly enhanced `watch` mode with live readouts for Memory Usage (RAM), Process Uptime, Bind Address (127.0.0.1 vs 0.0.0.0 network exposure), Process ID (PID), and active Bandwidth / Throughput (`↑...B/s ↓...B/s`).
+
+### Changed
+- **Direct AI Answers** — Adjusted the AI assistant's system prompt to enforce "Direct Answers First". The assistant will now provide direct conversational answers to explicit questions (e.g., "what process is consuming max ram?") *before* outputting summary tables, making it feel much more intelligent.
+- **Watch Mode UI Refinements** — Streamlined the `watch` interface by fusing process name and PID, simplifying update labels, and perfectly aligning columns by keeping the throughput metrics locked in position and dynamically appending request rates to the very end of active server rows.
+- **Layout Jitter Fixes** — Resolved severe initial layout jitter and misalignment in `watch` mode by pre-seeding existing ports and keeping column reservations consistent.
+
 ## [1.6.1] - 2026-05-23
 
 ### Added

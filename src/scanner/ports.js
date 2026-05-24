@@ -59,7 +59,7 @@ export async function getListeningPorts(detailed = false) {
   );
   const dockerMap = hasDocker ? batchDockerInfo() : new Map();
 
-  const results = entries.map(({ port, pid, processName }) => {
+  const results = entries.map(({ port, pid, processName, bindAddress }) => {
     const ps = psMap.get(pid);
     const cwd = cwdMap.get(pid);
 
@@ -87,6 +87,7 @@ export async function getListeningPorts(detailed = false) {
       startTime: null,
       status: "healthy",
       memory: null,
+      bindAddress: bindAddress || "0.0.0.0",
       gitBranch: null,
       processTree: [],
     };
@@ -163,14 +164,20 @@ export function watchPorts(callback, intervalMs = 2000) {
       const platform = await getPlatform();
       const current = await getListeningPorts();
       const currentSet = new Set(current.map((p) => p.port));
+      const uniquePids = [...new Set(current.map(p => p.pid))];
       const connectionCounts = platform.getConnectionCounts();
+      const throughputs = platform.getThroughput(uniquePids);
       const now = Date.now();
 
       for (const p of current) {
         const connections = connectionCounts.get(p.port) || 0;
+        const throughput = throughputs.get(p.pid) || { bytesIn: 0, bytesOut: 0 };
         const prevMetric = previousMetrics.get(p.port);
         
         let requestRate = 0;
+        let bytesInPerSec = 0;
+        let bytesOutPerSec = 0;
+
         if (prevMetric) {
           const timeDiff = (now - prevMetric.timestamp) / 1000;
           const connectionDiff = Math.abs(connections - prevMetric.connections);
@@ -178,18 +185,27 @@ export function watchPorts(callback, intervalMs = 2000) {
           if (timeDiff > 0 && connectionDiff > 0) {
             requestRate = connectionDiff / timeDiff;
           }
+
+          if (timeDiff > 0 && throughput.bytesIn > prevMetric.bytesIn) {
+             bytesInPerSec = (throughput.bytesIn - prevMetric.bytesIn) / timeDiff;
+          }
+          if (timeDiff > 0 && throughput.bytesOut > prevMetric.bytesOut) {
+             bytesOutPerSec = (throughput.bytesOut - prevMetric.bytesOut) / timeDiff;
+          }
         }
 
         previousMetrics.set(p.port, {
           connections,
+          bytesIn: throughput.bytesIn,
+          bytesOut: throughput.bytesOut,
           timestamp: now,
         });
 
         if (!previousPorts.has(p.port)) {
-          callback("new", { ...p, connections, requestRate });
-        } else if (prevMetric && (connections !== prevMetric.connections || requestRate > 0)) {
+          callback("new", { ...p, connections, requestRate, bytesInPerSec, bytesOutPerSec });
+        } else if (prevMetric && (connections !== prevMetric.connections || requestRate > 0 || bytesInPerSec > 0 || bytesOutPerSec > 0)) {
           // Emit update event for existing ports with changed metrics
-          callback("update", { ...p, connections, requestRate });
+          callback("update", { ...p, connections, requestRate, bytesInPerSec, bytesOutPerSec });
         }
       }
 
