@@ -9,9 +9,10 @@ export function Hero() {
       <section className="relative container mx-auto px-4 pt-24 pb-16 md:pt-32 md:pb-24">
         <HeroBackgroundElements />
         <div className="relative z-10 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
-          <div className="inline-flex items-center rounded-full border border-border/50 bg-muted/50 px-3 py-1 text-sm font-medium">
-            <span className="flex h-2 w-2 rounded-full bg-emerald-500 mr-2"></span>
-            A beautiful CLI tool to see & manage what's running on your ports ✨
+          <div className="inline-flex items-center rounded-full border border-border/50 bg-muted/50 px-3 py-1 sm:py-1 text-[11px] sm:text-sm font-medium whitespace-nowrap">
+            <span className="flex shrink-0 h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-500 mr-2"></span>
+            <span className="hidden sm:inline">A beautiful CLI tool to see & manage what's running on your ports ✨</span>
+            <span className="sm:hidden">Beautiful CLI to manage your ports ✨</span>
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-balance">
@@ -32,12 +33,10 @@ export function Hero() {
 
           <div className="w-full max-w-xl mt-8">
             <PackageInstallerTabs />
-            <div className="mt-4 text-sm text-muted-foreground flex items-center justify-center gap-2">
-              <Bot className="h-4 w-4" />
-              <span>
-                Tip: You can install and run it directly using <strong>Claude Code</strong> or <strong>Gemini CLI</strong>.
-              </span>
-            </div>
+            <p className="mt-5 text-sm text-muted-foreground text-center max-w-[280px] sm:max-w-none mx-auto leading-relaxed">
+              <Bot className="h-4 w-4 inline-block mr-1.5 -mt-1 shrink-0" />
+              Tip: You can install and run it directly using <strong>Claude Code</strong> or <strong>Gemini CLI</strong>.
+            </p>
           </div>
         </div>
       </section>

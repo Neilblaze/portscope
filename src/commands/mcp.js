@@ -17,6 +17,7 @@ import { loadConfig } from "../config/loader.js";
 import { getAvailableMemory } from "../scanner/memory.js";
 import chalk from "chalk";
 
+
 export async function mcpCommand(args) {
   await loadConfig();
 
@@ -91,10 +92,10 @@ export async function mcpCommand(args) {
             content: {
               type: "text",
               text: `Here are some usage examples for PortScope:
-1. To see all ports: use list_ports()
-2. To see only dev servers: use list_ports() with all=false
-3. To kill a specific process: use kill_process({ targets: [3000] })
-4. To check system stats when things are slow: use get_system_stats()`
+                      1. To see all ports: use list_ports()
+                      2. To see only dev servers: use list_ports() with all=false
+                      3. To kill a specific process: use kill_process({ targets: [3000] })
+                      4. To check system stats when things are slow: use get_system_stats()`
             }
           }
         ]

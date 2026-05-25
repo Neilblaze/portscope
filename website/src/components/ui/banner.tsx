@@ -70,7 +70,7 @@ const Banner = React.forwardRef<HTMLDivElement, BannerProps>(
                 {icon}
               </div>
             )}
-            <div className="flex grow items-center justify-between gap-3">
+            <div className="flex grow items-center justify-between gap-3 min-w-0">
               {children}
             </div>
           </>

@@ -38,25 +38,30 @@ export function MCPBanner() {
       isClosable
       onClose={() => setIsVisible(false)}
     >
-      <div className="flex grow gap-3 overflow-hidden items-center">
+      <div className="flex w-full items-center gap-2 sm:gap-3 min-w-0">
         <MCPLogo
-          className="shrink-0 opacity-80"
+          className="shrink-0 opacity-80 hidden sm:block"
           size={18}
         />
-        <div className="flex grow flex-col justify-between gap-3 md:flex-row overflow-hidden items-center">
-          <p className="text-sm truncate font-medium">
-            Unleash PortScope's power to your AI agents with our new native Model Context Protocol (MCP) server (v1.7.0) 🚀
+        <MCPLogo
+          className="shrink-0 opacity-80 sm:hidden"
+          size={14}
+        />
+        <div className="flex flex-row flex-1 min-w-0 gap-2 sm:gap-3 items-center justify-between">
+          <p className="text-[11px] sm:text-sm truncate font-medium">
+            <span className="hidden sm:inline">Unleash PortScope's power to your AI agents with our new native Model Context Protocol (MCP) server (v1.7.0) 🚀</span>
+            <span className="sm:hidden">Native MCP server for your AI agents (v1.7.0) 🚀</span>
           </p>
           <a
             href="https://github.com/Neilblaze/portscope#mcp-server-support"
             target="_blank"
             rel="noopener noreferrer"
-            className="group flex items-center justify-center whitespace-nowrap text-xs font-semibold shrink-0 bg-white/90 text-zinc-900 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 hover:bg-white px-3 py-1.5 rounded-full shadow-sm transition-all border border-black/5 dark:border-white/10"
+            className="group flex items-center justify-center whitespace-nowrap text-[10px] sm:text-xs font-semibold shrink-0 bg-white/90 text-zinc-900 dark:bg-white/10 dark:text-white dark:hover:bg-white/20 hover:bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full shadow-sm transition-all border border-black/5 dark:border-white/10 w-fit"
           >
-            Learn more
+            <span className="hidden sm:inline">Learn more</span>
+            <span className="sm:hidden">Docs</span>
             <ArrowRight
-              className="mt-0 ms-1 inline-flex transition-transform group-hover:translate-x-0.5"
-              size={14}
+              className="mt-0 ms-1 inline-flex transition-transform group-hover:translate-x-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5"
               strokeWidth={2}
               aria-hidden="true"
             />
