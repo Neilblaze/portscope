@@ -1,4 +1,5 @@
 import CrypticFluidBackground from '@/components/ui/cryptic-fluid-background';
+import { MCPBanner } from '@/components/mcp-banner';
 import { Navbar } from '@/components/sections/Navbar';
 import { Hero } from '@/components/sections/Hero';
 import { TrustedBy } from '@/components/sections/TrustedBy';
@@ -9,7 +10,8 @@ import { CookieBanner } from '@/components/ui/cookie-banner';
 
 function App() {
     return (
-        <div className="min-h-screen bg-transparent font-sans antialiased text-foreground selection:bg-primary selection:text-primary-foreground relative z-0">
+        <div className="min-h-screen bg-transparent font-sans antialiased text-foreground selection:bg-primary selection:text-primary-foreground relative z-0 flex flex-col">
+            <MCPBanner />
             <CrypticFluidBackground />
 
             <Navbar />

@@ -2,6 +2,16 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.7.0] - 2026-05-25
+
+### Added
+- **MCP Server Support** — PortScope can now act as a Model Context Protocol (MCP) server! This allows external AI agents (like Claude Desktop, Cursor) to securely use PortScope's port scanning and process management tools.
+- **Dual Transports for MCP** — Fully supports both `stdio` (for local MCP clients) and `sse` (Server-Sent Events, for remote/network orchestration).
+- **Headless Execution** — Added a `headless` mode to bypass interactive CLI prompts for destructive actions when tools are invoked over MCP, gracefully deferring confirmation to the MCP client.
+- **MCP Prompts** — Added `portscope-help` prompt to provide immediate usage examples and syntax guidelines to connected AI agents.
+- **MCP Resources** — Added `portscope://status` resource endpoint for real-time monitoring of the MCP server's uptime and memory usage.
+- **MCP Environment Configuration** — The server now parses `.env` automatically, allowing you to set `PORTSCOPE_MCP_PORT` to configure the SSE server port.
+
 ## [1.6.3] - 2026-05-25
 
 ### Fixed

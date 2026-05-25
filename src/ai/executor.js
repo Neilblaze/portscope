@@ -25,8 +25,8 @@ import { sanitizePath } from "../scanner/sanitize.js";
  * @param {object} input
  * @param {import("readline").Interface} [rl] — REPL readline to reuse for prompts
  */
-export async function executeTool(toolName, input, rl) {
-  if (DESTRUCTIVE_TOOLS.has(toolName)) {
+export async function executeTool(toolName, input, rl, options = { headless: false }) {
+  if (DESTRUCTIVE_TOOLS.has(toolName) && !options.headless) {
     const confirmed = await confirm(
       `Allow AI to execute ${chalk.bold(toolName)}?`,
       rl,

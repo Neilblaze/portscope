@@ -171,7 +171,7 @@ export function MagneticField({
           if (ellipDist < 1 && (dx !== 0 || dy !== 0)) {
             const influence = Math.pow(1 - ellipDist, 1.65);
 
-            let angle = Math.atan2(dy, dx);
+            let angle = Math.atan2(dy, dx) + Math.PI / 2;
             while (angle > Math.PI / 2) angle -= Math.PI;
             while (angle < -Math.PI / 2) angle += Math.PI;
 

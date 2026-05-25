@@ -1,4 +1,45 @@
 import { MagneticField } from "@/components/ui/magnetic-field";
+import { useEffect, useState } from "react";
+
+function SystemStatusBadge() {
+  const [status, setStatus] = useState<'operational' | 'degraded' | 'loading'>('loading');
+
+  useEffect(() => {
+    fetch('https://www.githubstatus.com/api/v2/status.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status.indicator === 'none') {
+          setStatus('operational');
+        } else {
+          setStatus('degraded');
+        }
+      })
+      .catch(() => {
+        setStatus('degraded');
+      });
+  }, []);
+
+  if (status === 'loading') return null;
+
+  const isOperational = status === 'operational';
+
+  return (
+    <a
+      href="https://www.githubstatus.com/"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border/40 bg-muted/30 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-sm"
+    >
+      <span className="relative flex h-2.5 w-2.5">
+        {isOperational && (
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+        )}
+        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isOperational ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+      </span>
+      {isOperational ? 'All systems operational' : 'Systems degraded'}
+    </a>
+  );
+}
 
 export function Footer() {
   return (
@@ -22,14 +63,14 @@ export function Footer() {
         <div className="container mx-auto px-4 max-w-6xl">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
             <div className="md:col-span-2 space-y-6">
-              <div className="flex items-center">
+              <div className="flex items-center md:ml-3">
                 <img
                   src="https://res.cloudinary.com/dmlwye965/image/upload/v1777225620/portscope_logo_taf1id.png"
                   alt="PortScope"
                   className="h-8 w-auto"
                 />
               </div>
-              <p className="text-base text-muted-foreground max-w-sm leading-relaxed">
+              <p className="text-base text-muted-foreground max-w-sm leading-relaxed md:ml-3">
                 Eliminate the operational friction of diagnosing port collisions and orphaned workloads with intelligent, high-fidelity tooling.
               </p>
             </div>
@@ -68,14 +109,15 @@ export function Footer() {
           </div>
 
           <div className="mt-16 pt-8 border-t border-border/40 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center">
+            <div className="flex items-center gap-6">
               <img
                 src="https://res.cloudinary.com/dmlwye965/image/upload/v1779556049/gdpr-compliant_yk3uzx.png"
                 alt="GDPR Compliant"
-                className="h-14 w-auto opacity-80 hover:opacity-100 transition-opacity"
+                className="h-10 w-auto opacity-90 hover:opacity-100 transition-opacity"
               />
+              <SystemStatusBadge />
             </div>
-            <div className="text-md text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} PortScope. All rights reserved.
             </div>
           </div>

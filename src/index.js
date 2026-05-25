@@ -68,6 +68,11 @@ async function main() {
     case "-h":
       helpCommand();
       break;
+    case "mcp": {
+      const { mcpCommand } = await import("./commands/mcp.js");
+      await mcpCommand(filteredArgs);
+      break;
+    }
     default:
       console.log(chalk.red(`\n  Unknown command: ${command}`));
       console.log(

@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.6.3-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.7.0-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -202,6 +202,34 @@ portscope chat          # Jump directly into AI chat mode
 
 > [!TIP]
 > Aliases `ports` and `whoisonport` also work: `ports kill 3000`, `whoisonport 8080`
+
+### MCP Server Support
+
+PortScope can run as a **Model Context Protocol (MCP)** server, securely exposing its port management and system diagnostic tools to external AI agents like Claude Desktop, Cursor, and Windsurf.
+
+```bash
+# Local usage (stdio) - For Claude Desktop, Cursor, etc.
+portscope mcp --transport stdio
+
+# Remote/Network usage (SSE) - Stand up a headless HTTP server
+portscope mcp --transport sse --port 3000
+
+# Verify the SSE server is working
+curl -N http://localhost:3000/sse
+```
+
+#### Environment Variables
+You can also configure the server by adding the following to your project's `.env` or `~/.portscope/.env`:
+- `PORTSCOPE_MCP_PORT=3000` — Overrides the default SSE server port.
+
+#### Capabilities
+The MCP Server exposes not just tools, but also prompts and resources to improve AI orchestration:
+- **Tools**: 9+ tools including `list_ports`, `inspect_port`, `kill_process`, `get_system_stats`, etc.
+- **Prompts**: Access `portscope-help` to provide usage examples directly to the LLM context.
+- **Resources**: Access `portscope://status` to read real-time Server Status, uptime, and memory usage.
+
+> [!NOTE]
+> When running in MCP mode, destructive tools (like killing processes) run in headless mode and defer confirmation to the client's built-in UI safeguards. The MCP server is blazing fast and dynamically loaded, ensuring zero performance penalty to your standard CLI commands.
 
 ---
 
