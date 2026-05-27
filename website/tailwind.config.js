@@ -62,11 +62,23 @@ export default {
         shimmer: {
           '0%': { backgroundPosition: '200% center' },
           '100%': { backgroundPosition: '-200% center' },
-        }
+        },
+        shine: {
+          "0%": {
+            backgroundPosition: "0% 0%",
+          },
+          "50%": {
+            backgroundPosition: "100% 100%",
+          },
+          "100%": {
+            backgroundPosition: "0% 0%",
+          },
+        },
       },
       animation: {
         draw: 'draw 1.5s ease-out forwards',
         shimmer: 'shimmer 3s linear infinite',
+        shine: "shine var(--duration) infinite linear",
       },
     },
   },

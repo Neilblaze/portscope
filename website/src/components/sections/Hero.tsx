@@ -1,9 +1,13 @@
-import { Bot } from 'lucide-react';
+import { useState } from 'react';
+import { Bot, Volume2, VolumeX } from 'lucide-react';
 import PackageInstallerTabs from '@/components/ui/package-installer-tabs';
+import { ShineBorder } from '@/components/ui/shine-border';
 import HeroBackgroundElements from '@/components/ui/hero-background';
 import { Typewriter } from '@/components/ui/typewriter';
 
 export function Hero() {
+  const [isMuted, setIsMuted] = useState(true);
+
   return (
     <>
       <section className="relative container mx-auto px-4 pt-24 pb-16 md:pt-32 md:pb-24">
@@ -42,20 +46,33 @@ export function Hero() {
       </section>
 
       <section className="container mx-auto px-4 py-12">
-        <div className="relative rounded-xl border border-border/50 bg-muted/20 p-2 md:p-4 max-w-5xl mx-auto overflow-hidden shadow-2xl shadow-black/10">
+        <ShineBorder 
+          className="relative w-full max-w-5xl mx-auto overflow-hidden !rounded-xl !bg-muted/20 !p-2 md:!p-4 shadow-2xl shadow-black/10 group"
+          color={["#A07CFE", "#FE8FB5", "#FFBE7B"]}
+          borderRadius={12}
+        >
           <div className="absolute inset-0 bg-background/10 backdrop-blur-3xl -z-10" />
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full rounded-lg border border-border/50 bg-background shadow-sm"
-            poster="https://res.cloudinary.com/dmlwye965/image/upload/v1777225620/portscope_logo_taf1id.png"
-          >
-            <source src="https://res.cloudinary.com/dmlwye965/video/upload/v1777850577/clipdemo_n4bykb.mp4" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-        </div>
+          <div className="relative">
+            <video
+              autoPlay
+              loop
+              muted={isMuted}
+              playsInline
+              className="w-full rounded-lg border border-border/50 bg-background shadow-sm"
+              poster="https://res.cloudinary.com/dmlwye965/image/upload/v1777225620/portscope_logo_taf1id.png"
+            >
+              <source src="https://res.cloudinary.com/dmlwye965/video/upload/v1779887938/portscope-demo_k2uyut.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white transition-opacity duration-500 ease-in-out opacity-0 group-hover:opacity-100 hover:bg-black/80 shadow-lg cursor-pointer flex items-center justify-center"
+              aria-label={isMuted ? "Unmute video" : "Mute video"}
+            >
+              {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+          </div>
+        </ShineBorder>
       </section>
     </>
   );

@@ -39,7 +39,7 @@ Eliminate the operational friction of diagnosing port collisions and orphaned wo
 
 <div align="center">
 
-https://github.com/user-attachments/assets/a9bc00e9-38dd-4257-b4f5-78b4b6348c33
+https://github.com/user-attachments/assets/41009a31-9a40-4503-b4d4-54698eca2148
 
 PortScope stays alive after showing your ports — type commands, ask questions in natural language, or use `/help` for the full command list.
 </div>
