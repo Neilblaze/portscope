@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.7.0-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.7.1-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -249,7 +249,7 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 | **Google Gemini** | `gemini-2.5-flash` | curated list | `GEMINI_API_KEY` |
 | **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✓ live browse | `OPENROUTER_API_KEY` |
 | **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✓ live browse | `NVIDIA_API_KEY` |
-| **Cerebras** | `llama3.3-70b` | curated list | `CEREBRAS_API_KEY` |
+| **Cerebras** | `llama-4-scout-17b-16e-instruct` | curated list | `CEREBRAS_API_KEY` |
 | **Groq** | `llama-3.3-70b-versatile` | curated list | `GROQ_API_KEY` |
 | **Ollama (Local)** | `llama3` | ✓ local list | *none — runs locally* |
 

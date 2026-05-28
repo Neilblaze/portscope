@@ -15,6 +15,7 @@ import { TOOLS } from "../ai/tools.js";
 import { executeTool } from "../ai/executor.js";
 import { loadConfig } from "../config/loader.js";
 import { getAvailableMemory } from "../scanner/memory.js";
+import { VERSION } from "../version.js";
 import chalk from "chalk";
 
 
@@ -34,7 +35,7 @@ export async function mcpCommand(args) {
   const server = new Server(
     {
       name: "portscope-mcp",
-      version: "1.7.0",
+      version: VERSION,
     },
     {
       capabilities: {

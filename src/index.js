@@ -10,6 +10,7 @@ import { psCommand } from "./commands/ps.js";
 import { helpCommand } from "./commands/help.js";
 import { chatCommand } from "./commands/chat.js";
 import { pauseCommand, resumeCommand } from "./commands/pause.js";
+import { restartCommand } from "./commands/restart.js";
 import { interactiveMode } from "./commands/interactive.js";
 import { sanitizeError } from "./config/sanitize-error.js";
 import chalk from "chalk";
@@ -62,6 +63,9 @@ async function main() {
       break;
     case "resume":
       await resumeCommand(filteredArgs);
+      break;
+    case "restart":
+      await restartCommand(filteredArgs);
       break;
     case "help":
     case "--help":

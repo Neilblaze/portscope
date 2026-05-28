@@ -15,6 +15,7 @@ import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "..
 import { createGhostTextInterface, setPortCache } from "../ui/ghost-text.js";
 import { getListeningPorts } from "../scanner/ports.js";
 import { sanitizeError } from "../config/sanitize-error.js";
+import { restartCommand } from "./restart.js";
 
 
 const SLASH_COMMANDS = [
@@ -77,6 +78,7 @@ export async function interactiveMode(showAll, verbose = false) {
     chalk.cyan(" kill <port>") + chalk.dim(" · ") +
     chalk.cyan("pause <port>") + chalk.dim(" · ") +
     chalk.cyan("resume <port>") + chalk.dim(" · ") +
+    chalk.cyan("restart <port>") + chalk.dim(" · ") +
     chalk.cyan("ps") + chalk.dim(" · ") +
     chalk.cyan("logs <port>")
   );
@@ -239,8 +241,8 @@ async function handleDirectCommand(input, rl) {
   const cmd = parts[0].toLowerCase();
 
   // Guard: detect compound/mixed-intent queries and route them to AI
-  const CONJUNCTIONS = /\b(and\s+then|and\s+also|and\s+show|and\s+kill|and\s+list|then\s+show|then\s+kill|then\s+list|also\s+show|also\s+kill|also\s+list|\band\b.*\b(?:show|kill|list|inspect|clean|watch|pause|resume|logs|ps)\b)\b/i;
-  const COMMAND_WORDS = new Set(["kill", "ps", "clean", "logs", "watch", "pause", "resume", "inspect", "list", "ports", "help"]);
+  const CONJUNCTIONS = /\b(and\s+then|and\s+also|and\s+show|and\s+kill|and\s+list|then\s+show|then\s+kill|then\s+list|also\s+show|also\s+kill|also\s+list|\band\b.*\b(?:show|kill|list|inspect|clean|watch|pause|resume|restart|logs|ps)\b)\b/i;
+  const COMMAND_WORDS = new Set(["kill", "ps", "clean", "logs", "watch", "pause", "resume", "restart", "inspect", "list", "ports", "help"]);
   if (COMMAND_WORDS.has(cmd) && parts.length > 2 && CONJUNCTIONS.test(input)) {
     return false;
   }
@@ -317,6 +319,18 @@ async function handleDirectCommand(input, rl) {
       }
       return true;
 
+    case "restart":
+      if (!parts[1] || !/^\d+$/.test(parts[1])) {
+        console.log(chalk.gray("  Usage: restart <port>"));
+        return true;
+      }
+      try {
+        await restartCommand(parts, rl);
+      } catch (err) {
+        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+      }
+      return true;
+
     case "inspect":
       if (parts[1]) {
         try {
@@ -366,6 +380,7 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
   console.log(`  ${chalk.cyan("pause <n>")}        Suspend a process (SIGSTOP)`);
   console.log(`  ${chalk.cyan("resume <n>")}       Resume a paused process (SIGCONT)`);
+  console.log(`  ${chalk.cyan("restart <n>")}      Kill & relaunch a process by port`);
   console.log(`  ${chalk.cyan("ps")}               Show running dev processes`);
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);

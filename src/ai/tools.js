@@ -110,10 +110,29 @@ export const TOOLS = [
       "Get system-wide CPU load averages, memory pressure stats, and free RAM. Use this to diagnose machine slowness or memory leaks.",
     parameters: { type: "object", properties: {} },
   },
+  {
+    name: "restart_process",
+    description:
+      "Kill the process on a given port and immediately relaunch it using its original command and working directory. Use when the user asks to restart a dev server or a process on a specific port.",
+    parameters: {
+      type: "object",
+      properties: {
+        port: {
+          type: "number",
+          description: "Port number of the process to restart.",
+        },
+        force: {
+          type: "boolean",
+          description: "Use SIGKILL instead of SIGTERM for the kill step.",
+        },
+      },
+      required: ["port"],
+    },
+  },
 ];
 
 
 
 // Tool names that perform destructive operations and require user confirmation
-export const DESTRUCTIVE_TOOLS = new Set(["kill_process", "kill_all_dev_ports", "clean_orphaned"]);
+export const DESTRUCTIVE_TOOLS = new Set(["kill_process", "kill_all_dev_ports", "clean_orphaned", "restart_process"]);
 

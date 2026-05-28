@@ -2,6 +2,16 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.7.1] - 2026-05-28
+
+### Added
+- **`portscope restart <port>`** — Kill and relaunch a process using its original command and working directory. Works from the CLI (`portscope restart 3000`), the interactive REPL (`restart 3000`), and via natural language through the AI (`restart_process` tool). Supports `--force` / `-f` flag for `SIGKILL`. Includes Docker-process guard, quote-aware command parser (no `shell: true`), and dual polling loops that wait for the port to become free before relaunching and then confirm the new PID is bound.
+- **`restart_process` AI tool** — New tool available to all AI providers and MCP clients. Marked as destructive (requires confirmation in interactive mode, runs headlessly via MCP).
+
+### Fixed
+- **MCP server version hardcoded** — The MCP server was advertising `version: "1.7.0"` as a literal string. Now reads from `src/version.js` (which sources `package.json`) so MCP clients always see the correct version without a manual edit per release.
+- **Cerebras default model in README** — The supported-providers table listed `llama3.3-70b` for Cerebras; corrected to `llama-4-scout-17b-16e-instruct` to match `src/config/schema.js`.
+
 ## [1.7.0] - 2026-05-25
 
 ### Added

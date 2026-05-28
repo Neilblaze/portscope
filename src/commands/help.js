@@ -59,6 +59,9 @@ export function helpCommand() {
   console.log(
     `    ${chalk.cyan("portscope resume <n>")}     Resume a paused process (SIGCONT)`,
   );
+  console.log(
+    `    ${chalk.cyan("portscope restart <n>")}    Kill & relaunch a process by port`,
+  );
   console.log();
   console.log(chalk.white.bold("  Chat Slash Commands"));
   console.log(chalk.gray("  ─────────────────────────────────────────"));

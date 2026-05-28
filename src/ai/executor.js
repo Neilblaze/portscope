@@ -1,4 +1,5 @@
 import { execSync } from "child_process";
+import { spawn } from "child_process";
 import os from "os";
 import { createInterface } from "readline";
 import chalk from "chalk";
@@ -8,12 +9,14 @@ import {
   findOrphanedProcesses,
   killProcess,
   resolveKillTarget,
+  pidExists,
 } from "../scanner/process.js";
 import { isDevProcess } from "../scanner/utils.js";
 import { getProcessLogFiles } from "../scanner/logs.js";
 import { getAvailableMemory } from "../scanner/memory.js";
 import { DESTRUCTIVE_TOOLS } from "./tools.js";
 import { sanitizePath } from "../scanner/sanitize.js";
+import { parseCommand } from "../commands/restart.js";
 
 
 
@@ -55,7 +58,7 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
       const results = {};
       const targets = input.targets || (input.target !== undefined ? [input.target] : []);
       if (targets.length === 0) return { error: "No targets provided" };
-      
+
       const signal = input.force ? "SIGKILL" : "SIGTERM";
       for (const t of targets) {
         const resolved = await resolveKillTarget(t);
@@ -164,6 +167,67 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
       };
     }
 
+    case "restart_process": {
+      const port = input.port;
+      const resolved = await resolveKillTarget(port);
+      if (!resolved || resolved.via !== "port") {
+        return { error: `No process found on port ${port}` };
+      }
+
+      const { pid, info } = resolved;
+      const command = info?.command || "";
+      const cwd = info?.cwd || process.cwd();
+      const processName = info?.processName || "unknown";
+
+      if (!command) {
+        return { error: `Could not capture command for PID ${pid} — cannot restart` };
+      }
+      if (processName === "docker") {
+        return { error: `Port ${port} is Docker-managed. Use \`docker restart\` instead.` };
+      }
+
+      const signal = input.force ? "SIGKILL" : "SIGTERM";
+      const killed = await killProcess(pid, signal, rl);
+      if (!killed) {
+        return { error: `Failed to kill PID ${pid}` };
+      }
+
+      const freed = await waitForPortFreeExecutor(port, pid);
+      if (!freed) {
+        return { error: `Port ${port} did not free within 5s after killing PID ${pid}` };
+      }
+
+      const [executable, ...spawnArgs] = parseCommand(command);
+      if (!executable) {
+        return { error: `Could not parse command: ${command}` };
+      }
+
+      let child;
+      try {
+        child = spawn(executable, spawnArgs, {
+          cwd,
+          detached: true,
+          stdio: "ignore",
+          env: process.env,
+        });
+        child.unref();
+      } catch (err) {
+        return { error: `Failed to relaunch: ${err.message}` };
+      }
+
+      const newPid = await waitForPortBoundExecutor(port);
+
+      return {
+        success: true,
+        killedPid: pid,
+        processName,
+        command,
+        cwd,
+        newPid: newPid || child.pid,
+        portBound: newPid !== null,
+      };
+    }
+
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
@@ -200,6 +264,39 @@ function simplifyProcess(p) {
     description: p.description,
   };
 }
+
+
+async function waitForPortFreeExecutor(port, pid, timeoutMs = 5000) {
+  const interval = 200;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, interval));
+    if (pidExists(pid)) continue;
+    try {
+      const ports = await getListeningPorts();
+      if (!ports.some((p) => p.port === port)) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+async function waitForPortBoundExecutor(port, timeoutMs = 8000) {
+  const interval = 300;
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, interval));
+    try {
+      const ports = await getListeningPorts();
+      const found = ports.find((p) => p.port === port);
+      if (found) return found.pid;
+    } catch { }
+  }
+  return null;
+}
+
 
 
 function confirm(message, existingRl) {
