@@ -1,4 +1,5 @@
 import { PROVIDER_DEFAULTS } from "../config/schema.js";
+import { stripNulls } from "./context.js";
 
 export async function sendMessage(config, apiKey, messages, tools, systemPrompt) {
   let attempt = 0;
@@ -97,7 +98,7 @@ function toAnthropicMessages(messages) {
           content: msg.toolResults.map((tr) => ({
             type: "tool_result",
             tool_use_id: tr.id,
-            content: JSON.stringify(tr.result),
+            content: JSON.stringify(stripNulls(tr.result)),
           })),
         });
       } else {
@@ -228,7 +229,7 @@ function toOpenAIMessages(messages) {
           result.push({
             role: "tool",
             tool_call_id: tr.id,
-            content: JSON.stringify(tr.result),
+            content: JSON.stringify(stripNulls(tr.result)),
           });
         }
       } else {

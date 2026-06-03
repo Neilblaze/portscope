@@ -12,6 +12,7 @@ import { pauseCommand, resumeCommand } from "./pause.js";
 import { handleSlashCommand, processConversation } from "../ai/conversation.js";
 import { generateConversationId, saveConversation } from "../ai/history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
+import { classifyIntent } from "../ai/intent.js";
 import { createGhostTextInterface, setPortCache } from "../ui/ghost-text.js";
 import { getListeningPorts } from "../scanner/ports.js";
 import { sanitizeError } from "../config/sanitize-error.js";
@@ -75,20 +76,20 @@ export async function interactiveMode(showAll, verbose = false) {
   }
   console.log(
     chalk.dim("      ") +
-    chalk.cyan(" kill <port>") + chalk.dim(" · ") +
-    chalk.cyan("pause <port>") + chalk.dim(" · ") +
-    chalk.cyan("resume <port>") + chalk.dim(" · ") +
-    chalk.cyan("restart <port>") + chalk.dim(" · ") +
-    chalk.cyan("ps") + chalk.dim(" · ") +
-    chalk.cyan("logs <port>")
+    chalk.blue(" kill <port>") + chalk.dim(" · ") +
+    chalk.blue("pause <port>") + chalk.dim(" · ") +
+    chalk.blue("resume <port>") + chalk.dim(" · ") +
+    chalk.blue("restart <port>") + chalk.dim(" · ") +
+    chalk.blue("ps") + chalk.dim(" · ") +
+    chalk.blue("clean")
   );
   console.log(
     chalk.dim("      ") +
-    chalk.cyan(" clean") + chalk.dim(" · ") +
-    chalk.cyan("watch") + chalk.dim(" · ") +
-    chalk.cyan("<port>") + chalk.dim(" (inspect) · ") +
-    chalk.cyan("help") + chalk.dim(" · ") +
-    chalk.cyan("exit")
+    chalk.blue(" logs <port>") + chalk.dim(" · ") +
+    chalk.blue("watch") + chalk.dim(" · ") +
+    chalk.blue("<port>") + chalk.dim(" (inspect) · ") +
+    chalk.blue("help") + chalk.dim(" · ") +
+    chalk.blue("exit")
   );
   console.log();
 
@@ -164,6 +165,37 @@ export async function interactiveMode(showAll, verbose = false) {
           console.log(chalk.dim("  Type ") + chalk.cyan("help") + chalk.dim(" or ") + chalk.cyan("/help") + chalk.dim(" for the full command list."));
           console.log();
           return;
+        }
+
+        const intent = classifyIntent(trimmed);
+
+        if (intent.type === "injection_attempt") {
+          console.log();
+          console.log(chalk.yellow(`  🛡️  ${intent.response}`));
+          console.log();
+          return;
+        }
+
+        if (intent.type === "off_topic") {
+          console.log();
+          console.log(chalk.yellow(`  🔒 ${intent.response}`));
+          if (intent.suggestions && intent.suggestions.length > 0) {
+            console.log(chalk.dim("  Try:"));
+            for (const s of intent.suggestions.slice(0, 3)) {
+              console.log(chalk.cyan(`    → ${s}`));
+            }
+          }
+          console.log();
+          return;
+        }
+
+        if (intent.type === "vague" && intent.suggestions) {
+          console.log();
+          console.log(chalk.dim("  💡 Tip: try one of these, or describe your issue:"));
+          for (const s of intent.suggestions.slice(0, 3)) {
+            console.log(chalk.dim(`    → ${s}`));
+          }
+          console.log();
         }
 
         const { text, images, errors } = extractImages(trimmed);

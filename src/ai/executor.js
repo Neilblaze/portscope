@@ -17,6 +17,8 @@ import { getAvailableMemory } from "../scanner/memory.js";
 import { DESTRUCTIVE_TOOLS } from "./tools.js";
 import { sanitizePath } from "../scanner/sanitize.js";
 import { parseCommand } from "../commands/restart.js";
+import { getPlatform } from "../platform/index.js";
+import { sanitizeForAI } from "../config/sanitize-data.js";
 
 
 
@@ -131,10 +133,29 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
         const numLines = input.lines || 20;
         const file = logFiles[0];
         const safePath = sanitizePath(file.path);
-        const content = execSync(`tail -n ${numLines} "${safePath}"`, {
+        let content = execSync(`tail -n ${numLines} "${safePath}"`, {
           encoding: "utf8",
           timeout: 5000,
         });
+
+        const lines = content.split("\n");
+        const charBudget = 8000; // ~2000 tokens — generous for diagnostics
+        if (content.length > charBudget && lines.length > 10) {
+          let kept = [];
+          let total = 0;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            total += lines[i].length + 1;
+            if (total > charBudget && kept.length >= 10) break;
+            kept.unshift(lines[i]);
+          }
+          const skipped = lines.length - kept.length;
+          if (skipped > 0) {
+            content = `[... ${skipped} earlier lines omitted for brevity ...]\n` + kept.join("\n");
+          } else {
+            content = kept.join("\n");
+          }
+        }
+
         return { file: file.path, type: file.fd, content };
       } catch (e) {
         return { error: `Could not read logs: ${e.message}` };
@@ -228,6 +249,45 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
       };
     }
 
+    case "get_port_connections": {
+      const platform = await getPlatform();
+      const ports = await getListeningPorts();
+      const listeningSet = new Set(ports.map((p) => p.port));
+      const topology = platform.getPortTopology(listeningSet);
+
+      const portInfoMap = new Map(ports.map((p) => [p.port, p]));
+      const result = [];
+
+      for (const [port, topo] of topology) {
+        const info = portInfoMap.get(port);
+        const entry = {
+          port,
+          process: info?.processName || "unknown",
+          framework: info?.framework || null,
+          connectedTo: [],
+          externalConnections: topo.remoteConnections,
+        };
+        for (const peerPort of topo.connectedPorts) {
+          const peerInfo = portInfoMap.get(peerPort);
+          entry.connectedTo.push({
+            port: peerPort,
+            process: peerInfo?.processName || "unknown",
+            framework: peerInfo?.framework || null,
+          });
+        }
+        result.push(entry);
+      }
+
+      if (input.port) {
+        const filtered = result.filter(
+          (r) => r.port === input.port || r.connectedTo.some((c) => c.port === input.port),
+        );
+        return { topology: filtered };
+      }
+
+      return { topology: result };
+    }
+
     default:
       return { error: `Unknown tool: ${toolName}` };
   }
@@ -247,7 +307,17 @@ function simplifyPort(p, detailed = false) {
   if (detailed) {
     result.cwd = p.cwd;
     result.gitBranch = p.gitBranch;
-    result.command = p.command;
+    if (p.command) {
+      const cmd = String(p.command);
+      const MAX = 80;
+      if (cmd.length > MAX) {
+        const firstToken = cmd.split(" ")[0];
+        const exe = firstToken.split(/[/\\]/).pop() || firstToken;
+        result.command = `${exe} … (${cmd.length} chars)`;
+      } else {
+        result.command = cmd;
+      }
+    }
   }
   return result;
 }

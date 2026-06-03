@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.7.1-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.0-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -224,7 +224,7 @@ You can also configure the server by adding the following to your project's `.en
 
 #### Capabilities
 The MCP Server exposes not just tools, but also prompts and resources to improve AI orchestration:
-- **Tools**: 9+ tools including `list_ports`, `inspect_port`, `kill_process`, `get_system_stats`, etc.
+- **Tools**: 11 tools — `list_ports`, `inspect_port`, `kill_process`, `kill_all_dev_ports`, `list_processes`, `find_orphaned`, `clean_orphaned`, `view_logs`, `get_system_stats`, `restart_process`, `get_port_connections`.
 - **Prompts**: Access `portscope-help` to provide usage examples directly to the LLM context.
 - **Resources**: Access `portscope://status` to read real-time Server Status, uptime, and memory usage.
 
@@ -310,7 +310,9 @@ Create `portscope.config.json` in your project root or home directory:
   "ai": {
     "provider": "anthropic",
     "model": "claude-haiku-4-5",
-    "maxTokens": 4096
+    "maxTokens": 4096,
+    "maxContextTokens": 32000,
+    "sanitizePatterns": []
   },
   "display": {
     "showBanner": true

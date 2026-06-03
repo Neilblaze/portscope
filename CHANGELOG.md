@@ -2,6 +2,38 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.0] - 2026-06-04
+
+### Added
+- **Port Connection Topology** — New `get_port_connections` AI tool detects and displays live connections between local ports (e.g., Next.js frontend on `:3000` ↔ Flask backend on `:5000`). Implemented via native `lsof` (macOS), `ss`/`netstat` (Linux), and `netstat` (Windows). Returns a full connection map annotated with process names and frameworks.
+- **Pre-Transmission Data Sanitizer** (`src/config/sanitize-data.js`) — All tool results are scrubbed of secrets before leaving the machine. Redacts API keys (`sk-*`, `api_*`), Bearer tokens, JWTs, database connection strings (Postgres, MongoDB, Redis, MySQL, AMQP), PEM private key blocks, AWS access key IDs, sensitive env var assignments (`*_KEY=`, `DATABASE_URL=`, etc.), and long hex strings. Supports user-configurable custom patterns via `sanitizePatterns` in `portscope.config.json`.
+- **Client-Side Intent Classifier** (`src/ai/intent.js`) — Zero-latency local classifier runs before every AI call. Detects and blocks prompt injection attempts (identity overrides, DAN/jailbreak, delimiter injection, system prompt extraction), off-topic queries (non-port questions), and vague inputs. Greetings pass directly to the AI; vague inputs show contextual hints but still forward to AI so the user always gets a response.
+- **Sliding-Window Context Compaction** (`src/ai/context.js`) — Keeps the last 3 conversation turns verbatim ("hot zone") and compacts older tool results into 1-line summaries for transmission. Strips null fields recursively before serialization. Configurable via `maxContextTokens` (default: 32000 tokens).
+- **Human-Readable Tool Status Labels** — Tool execution status lines now display friendly labels instead of raw function names (e.g., `⚡ Scanning ports...` instead of `⚡ list_ports...`). All 11 tools have bespoke labels; unknown tools fall back to underscore-to-space conversion.
+- **New Test Suites** — Added 69 new tests across 4 new test files: `tests/context.test.js` (13), `tests/intent.test.js` (31), `tests/sanitize-data.test.js` (21), `tests/topology.test.js` (6). Total suite now at **278 tests, 0 failures**.
+
+### Changed
+- **Tool Status Bolt Color** — The `⚡` indicator during tool execution is now rendered in `chalk.rgb(185, 148, 0)` (deep amber) across all rendering paths (TTY glow animation, verbose mode, non-TTY fallback). The glow animation pulses through the amber spectrum for a refined visual.
+- **Smart Log Trimming** — `view_logs` tool no longer hard-caps lines. Instead it trims dynamically from the tail within an 8KB character budget (~2000 tokens), preserving diagnostic integrity and appending a `[... N earlier lines omitted]` marker only when trimming occurs.
+- **Command Field Truncation** — `inspect_port` detailed results now truncate the raw process command to `<exe-basename> … (N chars)` when it exceeds 80 characters, preventing Electron/Chromium processes from producing absurdly wide table cells.
+- **Config Schema** — Added `ai.maxContextTokens` (default: `32000`) and `ai.sanitizePatterns` (default: `[]`) to `DEFAULT_CONFIG` in `src/config/schema.js`.
+- **System Prompt Hardening** — AI system prompt now explicitly forbids DAN mode, jailbreak, and developer mode. Identity is declared immutable. Added vague-query and greeting handling guidelines.
+- **Verbose Mode** — Tool status line in verbose mode now shows `⚡ Friendly Label · raw_tool_name` so power users retain full visibility without compromising the default UX.
+
+### Fixed
+- **Greetings Blocked as Vague** — `hi`, `hello`, `hey` were incorrectly caught by the vague-input classifier and silently returned a suggestion block with no AI response. Greetings are now classified as `port_query` and forwarded to the AI.
+- **`clear` Treated as Unknown Input** — The `clear` command was being routed through intent classification instead of the direct command handler.
+- **Hallucinated Port Labels** — When a query contained nonsense words (e.g., "abra cadabra ports"), the AI would echo the phrase back as a fictional category name above real port data. A new *Data Fidelity* section in the system prompt instructs the model to strip meaningless filter words and present tool results without invented framing.
+
+### Technical
+- **`src/ai/conversation.js` Modularized** — The 895-line monolith is split into five focused ES modules. `conversation.js` itself is now a 4-line re-export barrel with zero logic. New files:
+  - `src/ai/prompt.js` — `SYSTEM_PROMPT` constant (standalone, easy to edit)
+  - `src/ai/chat.js` — `startChat()` REPL loop
+  - `src/ai/slash-commands.js` — `handleSlashCommand()` + `printSlashHelp()`
+  - `src/ai/provider-flow.js` — `switchProvider()`, `revokeApiKeyFlow()`, `browseModels()`, `printChatHeader()`, `printStatus()`
+  - `src/ai/tool-loop.js` — `processConversation()` with internal `callAIWithSpinner()` and `executeToolCall()` helpers extracted for clarity
+- **Zero breaking changes** — all external callers (`src/commands/chat.js`, `src/commands/interactive.js`) import from `conversation.js` as before; the barrel re-exports the same public API.
+
 ## [1.7.1] - 2026-05-28
 
 ### Added

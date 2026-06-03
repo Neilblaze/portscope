@@ -205,32 +205,77 @@ export function getConnectionCounts() {
   return connectionMap;
 }
 
+export function getPortTopology(listeningPorts) {
+  const topology = new Map();
+
+  try {
+    const raw = execSync("lsof -iTCP -sTCP:ESTABLISHED -P -n 2>/dev/null", {
+      encoding: "utf8",
+      timeout: 5000,
+    });
+
+    const lines = raw.trim().split("\n").slice(1);
+    for (const line of lines) {
+      const parts = line.split(/\s+/);
+      if (parts.length < 9) continue;
+
+      const nameField = parts[8]; // e.g. "127.0.0.1:3000->127.0.0.1:5000"
+      const arrowMatch = nameField.match(/^(.+):(\d+)->(.+):(\d+)$/);
+      if (!arrowMatch) continue;
+
+      const localPort = parseInt(arrowMatch[2], 10);
+      const remoteAddr = arrowMatch[3];
+      const remotePort = parseInt(arrowMatch[4], 10);
+
+      if (!listeningPorts.has(localPort)) continue;
+
+      if (!topology.has(localPort)) {
+        topology.set(localPort, { connectedPorts: new Set(), remoteConnections: 0 });
+      }
+
+      const entry = topology.get(localPort);
+
+      const isLocalRemote =
+        listeningPorts.has(remotePort) &&
+        (remoteAddr === "127.0.0.1" || remoteAddr === "::1" || remoteAddr === "localhost" || remoteAddr === "*");
+
+      if (isLocalRemote) {
+        entry.connectedPorts.add(remotePort);
+      } else {
+        entry.remoteConnections++;
+      }
+    }
+  } catch { }
+
+  return topology;
+}
+
 export function getThroughput(pids) {
   const map = new Map();
   if (pids.length === 0) return map;
-  
+
   try {
     const raw = execSync("nettop -P -L 1 -J bytes_in,bytes_out 2>/dev/null", {
       encoding: "utf8",
       timeout: 3000
     });
-    
+
     const pidSet = new Set(pids);
     const lines = raw.trim().split("\n").slice(1);
     for (const line of lines) {
       if (!line) continue;
       const parts = line.split(",");
       if (parts.length < 3) continue;
-      
+
       const namePid = parts[0];
       const match = namePid.match(/\.(\d+)$/);
       if (!match) continue;
       const pid = parseInt(match[1], 10);
-      
+
       if (pidSet.has(pid)) {
         const bytesIn = parseInt(parts[1], 10) || 0;
         const bytesOut = parseInt(parts[2], 10) || 0;
-        
+
         const existing = map.get(pid) || { bytesIn: 0, bytesOut: 0 };
         map.set(pid, {
           bytesIn: existing.bytesIn + bytesIn,
@@ -238,6 +283,6 @@ export function getThroughput(pids) {
         });
       }
     }
-  } catch {}
+  } catch { }
   return map;
 }

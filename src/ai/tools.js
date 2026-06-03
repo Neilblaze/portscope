@@ -129,6 +129,20 @@ export const TOOLS = [
       required: ["port"],
     },
   },
+  {
+    name: "get_port_connections",
+    description:
+      "Show which local listening ports are connected to each other (e.g., a Next.js frontend on :3000 is talking to a Flask backend on :5000). Also shows external connection counts per port.",
+    parameters: {
+      type: "object",
+      properties: {
+        port: {
+          type: "number",
+          description: "Optional: filter to connections for a specific port.",
+        },
+      },
+    },
+  },
 ];
 
 

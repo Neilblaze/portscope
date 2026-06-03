@@ -3,6 +3,8 @@ export const DEFAULT_CONFIG = {
     provider: "anthropic",
     model: null,
     maxTokens: 4096,
+    maxContextTokens: 32000,
+    sanitizePatterns: [],
   },
   display: {
     showBanner: true,

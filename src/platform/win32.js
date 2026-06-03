@@ -338,7 +338,52 @@ export function getConnectionCounts() {
   return connectionMap;
 }
 
+export function getPortTopology(listeningPorts) {
+  const topology = new Map();
+
+  try {
+    const raw = exec("netstat -ano -p TCP");
+    if (!raw) return topology;
+
+    const lines = raw.split(/\r?\n/).filter((l) => l.includes("ESTABLISHED"));
+
+    for (const line of lines) {
+      const parts = line.trim().split(/\s+/);
+      if (parts.length < 5) continue;
+
+      const localAddr = parts[1];
+      const remoteAddr = parts[2];
+
+      const localMatch = localAddr.match(/:(\d+)$/);
+      const remoteMatch = remoteAddr.match(/:(\d+)$/);
+      if (!localMatch || !remoteMatch) continue;
+
+      const localPort = parseInt(localMatch[1], 10);
+      const remotePort = parseInt(remoteMatch[1], 10);
+
+      if (!listeningPorts.has(localPort)) continue;
+
+      if (!topology.has(localPort)) {
+        topology.set(localPort, { connectedPorts: new Set(), remoteConnections: 0 });
+      }
+
+      const entry = topology.get(localPort);
+      const remoteHost = remoteAddr.replace(/:(\d+)$/, "");
+      const isLocalRemote =
+        listeningPorts.has(remotePort) &&
+        (remoteHost === "127.0.0.1" || remoteHost === "::1" || remoteHost === "[::1]" || remoteHost === "localhost");
+
+      if (isLocalRemote) {
+        entry.connectedPorts.add(remotePort);
+      } else {
+        entry.remoteConnections++;
+      }
+    }
+  } catch { }
+
+  return topology;
+}
+
 export function getThroughput(pids) {
   return new Map();
 }
-

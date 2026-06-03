@@ -324,6 +324,99 @@ export function getConnectionCounts() {
   return connectionMap;
 }
 
+export function getPortTopology(listeningPorts) {
+  const topology = new Map();
+
+  if (commandExists("ss")) {
+    try {
+      const raw = execSync("ss -tn state established 2>/dev/null", {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+
+      const lines = raw.trim().split("\n").slice(1);
+      for (const line of lines) {
+        const parts = line.split(/\s+/);
+        if (parts.length < 5) continue;
+
+        const localAddr = parts[3];
+        const peerAddr = parts[4];
+
+        const localMatch = localAddr.match(/:(\d+)$/);
+        const peerMatch = peerAddr.match(/:(\d+)$/);
+        if (!localMatch || !peerMatch) continue;
+
+        const localPort = parseInt(localMatch[1], 10);
+        const remotePort = parseInt(peerMatch[1], 10);
+
+        if (!listeningPorts.has(localPort)) continue;
+
+        if (!topology.has(localPort)) {
+          topology.set(localPort, { connectedPorts: new Set(), remoteConnections: 0 });
+        }
+
+        const entry = topology.get(localPort);
+        const remoteHost = peerAddr.replace(/:(\d+)$/, "");
+        const isLocalRemote =
+          listeningPorts.has(remotePort) &&
+          (remoteHost === "127.0.0.1" || remoteHost === "::1" || remoteHost === "[::1]" || remoteHost === "localhost");
+
+        if (isLocalRemote) {
+          entry.connectedPorts.add(remotePort);
+        } else {
+          entry.remoteConnections++;
+        }
+      }
+      return topology;
+    } catch { }
+  }
+
+  // Fallback: netstat
+  if (commandExists("netstat")) {
+    try {
+      const raw = execSync("netstat -tn 2>/dev/null | grep ESTABLISHED", {
+        encoding: "utf8",
+        timeout: 5000,
+      });
+
+      for (const line of raw.trim().split("\n")) {
+        const parts = line.split(/\s+/);
+        if (parts.length < 5) continue;
+
+        const localAddr = parts[3];
+        const peerAddr = parts[4];
+
+        const localMatch = localAddr.match(/:(\d+)$/);
+        const peerMatch = peerAddr.match(/:(\d+)$/);
+        if (!localMatch || !peerMatch) continue;
+
+        const localPort = parseInt(localMatch[1], 10);
+        const remotePort = parseInt(peerMatch[1], 10);
+
+        if (!listeningPorts.has(localPort)) continue;
+
+        if (!topology.has(localPort)) {
+          topology.set(localPort, { connectedPorts: new Set(), remoteConnections: 0 });
+        }
+
+        const entry = topology.get(localPort);
+        const remoteHost = peerAddr.replace(/:(\d+)$/, "");
+        const isLocalRemote =
+          listeningPorts.has(remotePort) &&
+          (remoteHost === "127.0.0.1" || remoteHost === "::1" || remoteHost === "localhost");
+
+        if (isLocalRemote) {
+          entry.connectedPorts.add(remotePort);
+        } else {
+          entry.remoteConnections++;
+        }
+      }
+    } catch { }
+  }
+
+  return topology;
+}
+
 export function getThroughput(pids) {
   return new Map();
 }
