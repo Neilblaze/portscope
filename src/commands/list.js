@@ -7,5 +7,5 @@ export async function listCommand(showAll, showBanner = true) {
   if (!showAll) {
     ports = ports.filter((p) => isDevProcess(p.processName, p.command));
   }
-  displayPortTable(ports, !showAll, showBanner);
+  await displayPortTable(ports, !showAll, showBanner);
 }

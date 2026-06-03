@@ -7,7 +7,7 @@ import { createInterface } from "readline";
 
 export async function inspectCommand(portNum) {
   const info = await getPortDetails(portNum);
-  displayPortDetail(info);
+  await displayPortDetail(info);
 
   if (info) {
     const rl = createInterface({

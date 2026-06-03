@@ -4,8 +4,8 @@ import { renderBanner } from "./banner.js";
 
 
 // Display detailed info for a single port
-export function displayPortDetail(info) {
-  renderBanner();
+export async function displayPortDetail(info) {
+  await renderBanner();
 
   if (!info) {
     console.log(chalk.red("  No process found on that port.\n"));

@@ -10,7 +10,7 @@ export async function cleanCommand(rl) {
   const failed = [];
 
   if (orphaned.length === 0) {
-    displayCleanResults(orphaned, killed, failed);
+    await displayCleanResults(orphaned, killed, failed);
     return;
   }
 
@@ -47,7 +47,7 @@ export async function cleanCommand(rl) {
         failed.push(p.pid);
       }
     }
-    displayCleanResults(orphaned, killed, failed);
+    await displayCleanResults(orphaned, killed, failed);
   } else {
     console.log(chalk.gray("\n  Aborted.\n"));
   }

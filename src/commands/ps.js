@@ -55,6 +55,6 @@ export async function psCommand(showAll, showBanner = true) {
     processes = nonDocker;
   }
   processes.sort((a, b) => b.cpu - a.cpu);
-  displayProcessTable(processes, !showAll, showBanner);
+  await displayProcessTable(processes, !showAll, showBanner);
 }
 

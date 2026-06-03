@@ -29,8 +29,8 @@ const TABLE_STYLE = {
 };
 
 
-export function displayPortTable(ports, filtered = false, showBanner = true) {
-  if (showBanner) renderBanner();
+export async function displayPortTable(ports, filtered = false, showBanner = true) {
+  if (showBanner) await renderBanner();
 
   // TODO: I'll try to make this a bit more better when I get some peace of mind and time :)
   if (ports.length === 0) {
@@ -95,8 +95,8 @@ export function displayPortTable(ports, filtered = false, showBanner = true) {
 }
 
 
-export function displayProcessTable(processes, filtered = false, showBanner = true) {
-  if (showBanner) renderBanner();
+export async function displayProcessTable(processes, filtered = false, showBanner = true) {
+  if (showBanner) await renderBanner();
 
   if (processes.length === 0) {
     console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Processes Found") + chalk.gray(" ────────────────────╮"));

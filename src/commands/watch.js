@@ -3,7 +3,7 @@ import { displayWatchEvent, displayWatchHeader, getWatchSeparator } from "../ui/
 import chalk from "chalk";
 
 export async function watchCommand() {
-  displayWatchHeader();
+  await displayWatchHeader();
 
   const processNames = new Set();
   

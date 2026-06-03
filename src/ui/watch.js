@@ -118,8 +118,8 @@ export function getWatchSeparator() {
 }
 
 
-export function displayWatchHeader() {
-  renderBanner();
+export async function displayWatchHeader() {
+  await renderBanner();
   console.log(chalk.cyan.bold("  Watching for port changes..."));
   console.log(chalk.gray("  Press Ctrl+C to stop\n"));
 }

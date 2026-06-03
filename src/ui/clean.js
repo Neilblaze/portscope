@@ -3,8 +3,8 @@ import { renderBanner } from "./banner.js";
 
 
 // Display orphaned/zombie process cleanup results
-export function displayCleanResults(orphaned, killed, failed) {
-  renderBanner();
+export async function displayCleanResults(orphaned, killed, failed) {
+  await renderBanner();
 
   if (orphaned.length === 0) {
     console.log(
