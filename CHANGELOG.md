@@ -2,6 +2,21 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.1] - 2026-06-07
+
+### Added
+- **Persistent Kill History** — Saves details of killed dev processes to `~/.portscope/kill-history.json` with a 24-hour expiration window. Allows restarting previously-killed ports even if no active process is currently running on them.
+- **Dynamic Dev Command Relauncher** — Resolves the exact package manager and start/dev script (e.g. `pnpm run dev`, `npm run dev`, `yarn dev`) when restarting processes, falling back to framework-specific native commands for non-Node ecosystems (Django, Flask, Rails, Go, Rust, etc.).
+- **Process Autoreload Mode** — Added a `--autoreload` / `--ar` flag to `watch` mode. Automatically restarts crashed dev processes using their recorded start commands.
+- **OS-Aware System Process Guard** (`src/scanner/system-guard.js`) — Blocks PortScope from sending signals (killing, pausing, resuming) to critical OS processes (PIDs 0/1, launchd, systemd, sshd, kernel_task, smss, csrss, svchost, etc.). Prevents system instability with specific warning alerts.
+- **Interactive Tree Prompt Styling** — Reshaped interactive confirmation prompts (like `Enable autoreload?` and `Allow AI to execute...`) to use the connected box-tree layout matching AI response bubbles. Indents subsequent AI responses dynamically to represent child levels.
+- **Automated Secrets Scan** (`.github/workflows/secrets-scan.yml`) — Integrated official Gitleaks security scans into GitHub Actions to scan pull requests and branch pushes, preventing credential or API key leakage.
+
+### Fixed
+- **Double Input in REPL Prompts** — Fixed a bug where readline prompts inside the REPL received duplicate keystrokes due to multiple readline instances listening on `process.stdin`. Reuses the active REPL readline interface.
+- **SIGINT / Ctrl+C Event Leaks** — Ensured that cancelling prompts using Ctrl+C safely recovers and returns control back to the active REPL prompt instead of exiting the entire CLI session.
+- **IPv6 Bind Address Resolution** — Fixed IPv6 bind address parsing across platform layers (macOS, Linux, and Windows) to properly handle bracketed formats like `[::]` and `[::1]`, falling back cleanly to `0.0.0.0` or custom loopback.
+
 ## [1.8.0] - 2026-06-04
 
 ### Added

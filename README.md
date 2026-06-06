@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.8.0-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.1-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -193,12 +193,17 @@ $ portscope ps
 ### Other commands
 
 ```bash
-portscope clean         # Kill orphaned/zombie dev servers
-portscope watch         # Monitor port changes in real-time (with live traffic metrics)
-portscope chat          # Jump directly into AI chat mode
+portscope clean                        # Kill orphaned/zombie dev servers
+portscope watch                        # Monitor port changes in real-time (with live traffic metrics)
+portscope watch --ar                   # Monitor ports with Autoreload (auto-restart crashed processes)
+portscope watch --fe,be                # Monitor only specific port roles (e.g. frontend + backend)
+portscope chat                         # Jump directly into AI chat mode
 ```
 
 **Watch mode** displays live metrics for every active port including Memory Usage (RAM), Process Uptime, Bind Address (127.0.0.1 vs 0.0.0.0), Process ID (PID), active connection counts, request rates (req/s), and real-time Bandwidth / Throughput (`↑...B/s ↓...B/s`), helping identify load issues and monitor live traffic without additional/external tools.
+
+- **Autoreload (`--autoreload` / `--ar`)**: Automatically restarts crashed processes using their recorded start/dev commands if they crash.
+- **Port Filtering (`--fe`, `--be`, `--db`, `--api`, `--ml`, `--ui`)**: Filter watch list by specific process roles (frontend, backend, database, API, machine learning, UI). Multiple roles can be comma-separated (e.g. `--fe,be`).
 
 > [!TIP]
 > Aliases `ports` and `whoisonport` also work: `ports kill 3000`, `whoisonport 8080`
