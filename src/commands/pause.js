@@ -35,6 +35,13 @@ export async function pauseCommand(filteredArgs) {
     return;
   }
 
+  if (resolved.blocked) {
+    console.log(chalk.red(`\n  ⛊  Blocked — PID ${resolved.pid}${resolved.processName ? ` (${resolved.processName})` : ""}`));
+    console.log(chalk.red(`     ${resolved.reason}\n`));
+    process.exitCode = 1;
+    return;
+  }
+
   const { pid, via } = resolved;
   const label = via === "port"
     ? `:${resolved.port} — ${resolved.info?.processName || "unknown"} (PID ${pid})`
@@ -79,6 +86,13 @@ export async function resumeCommand(filteredArgs) {
       ? `No listener on :${n} and no process with PID ${n}`
       : `No process with PID ${n}`;
     console.log(chalk.red(`\n  ✕ ${msg}\n`));
+    process.exitCode = 1;
+    return;
+  }
+
+  if (resolved.blocked) {
+    console.log(chalk.red(`\n  ⛊  Blocked — PID ${resolved.pid}${resolved.processName ? ` (${resolved.processName})` : ""}`));
+    console.log(chalk.red(`     ${resolved.reason}\n`));
     process.exitCode = 1;
     return;
   }

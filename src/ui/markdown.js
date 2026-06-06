@@ -14,7 +14,7 @@ import Table from "cli-table3";
  *   # headers → chalk.bold.underline
  *   --- / *** → horizontal rule
  */
-export function renderMarkdown(text, asTree = false) {
+export function renderMarkdown(text, asTree = false, indentLevel = 0) {
   if (!text) return "";
 
   const lines = text.trim().split("\n");
@@ -23,17 +23,20 @@ export function renderMarkdown(text, asTree = false) {
   let isFirstOutputLine = true;
 
   const getPrefixes = () => {
-    if (!asTree) return { first: "  ", sub: "  ", widthAdjust: 2 };
+    const pad = " ".repeat(indentLevel);
+    if (!asTree) return { first: pad + "  ", sub: pad + "  ", widthAdjust: 2 + indentLevel };
     if (isFirstOutputLine) {
       isFirstOutputLine = false;
-      return { first: chalk.gray("  ╰─⊛ "), sub: "      ", widthAdjust: 6 };
+      return { first: pad + chalk.gray("  ╰─⊛ "), sub: pad + "      ", widthAdjust: 6 + indentLevel };
     }
-    return { first: "      ", sub: "      ", widthAdjust: 6 };
+    return { first: pad + "      ", sub: pad + "      ", widthAdjust: 6 + indentLevel };
   };
 
   if (asTree) {
-    output.push(chalk.gray("  │"));
+    output.push(" ".repeat(indentLevel) + chalk.gray("  │"));
   }
+
+  const inlineOpts = { highlightPorts: asTree };
 
   while (i < lines.length) {
     const line = lines[i];
@@ -63,7 +66,7 @@ export function renderMarkdown(text, asTree = false) {
     // Blockquote
     if (/^\s*>\s?/.test(line)) {
       const content = line.replace(/^\s*>\s?/, "");
-      const rendered = renderInline(content);
+      const rendered = renderInline(content, inlineOpts);
       const cols = process.stdout.columns || 80;
       const p = getPrefixes();
       const prefix = p.first + chalk.yellow("💡 ");
@@ -76,7 +79,7 @@ export function renderMarkdown(text, asTree = false) {
     // Headers
     const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
     if (headingMatch) {
-      const content = renderInline(headingMatch[2]);
+      const content = renderInline(headingMatch[2], inlineOpts);
       const cols = process.stdout.columns || 80;
       const p = getPrefixes();
       if (headingMatch[1].length === 1) {
@@ -94,7 +97,7 @@ export function renderMarkdown(text, asTree = false) {
       const p = getPrefixes();
       const indent = ulMatch[1] || "";
       const prefix = p.first + indent + chalk.gray("• ");
-      const rendered = renderInline(ulMatch[2]);
+      const rendered = renderInline(ulMatch[2], inlineOpts);
       const cols = process.stdout.columns || 80;
       const strippedPrefix = stripAnsi(prefix);
       output.push(wrapAnsi(rendered, cols - strippedPrefix.length, prefix, p.sub + indent + "  "));
@@ -109,7 +112,7 @@ export function renderMarkdown(text, asTree = false) {
       const indent = olMatch[1] || "";
       const num = line.match(/^(\s*)(\d+)/)[2];
       const prefix = p.first + indent + chalk.gray(`${num}. `);
-      const rendered = renderInline(olMatch[2]);
+      const rendered = renderInline(olMatch[2], inlineOpts);
       const cols = process.stdout.columns || 80;
       const strippedPrefix = stripAnsi(prefix);
       output.push(wrapAnsi(rendered, cols - strippedPrefix.length, prefix, p.sub + indent + " ".repeat(num.length + 2)));
@@ -120,7 +123,7 @@ export function renderMarkdown(text, asTree = false) {
     // Regular line (inline formatting only)
     if (line.trim()) {
       const p = getPrefixes();
-      const rendered = renderInline(line);
+      const rendered = renderInline(line, inlineOpts);
       const cols = process.stdout.columns || 80;
       output.push(wrapAnsi(rendered, cols - p.widthAdjust, p.first, p.sub));
     } else {
@@ -135,7 +138,7 @@ export function renderMarkdown(text, asTree = false) {
 /**
  * Render inline markdown elements: **bold**, *italic*, `code`, ~~strike~~
  */
-function renderInline(text) {
+function renderInline(text, { highlightPorts = false } = {}) {
   if (!text) return "";
   let result = text;
 
@@ -146,6 +149,19 @@ function renderInline(text) {
     codeSpans.push(chalk.cyan(code));
     return `\x00CODE${idx}\x00`;
   });
+
+  const portSpans = [];
+  if (highlightPorts) {
+    result = result.replace(/(?<![\/\w\x00]):(\d{1,5})\b/g, (match, port) => {
+      const n = parseInt(port, 10);
+      if (n >= 1 && n <= 65535) {
+        const idx = portSpans.length;
+        portSpans.push(chalk.bgBlack.white(` :${port} `));
+        return `\x00PORT${idx}\x00`;
+      }
+      return match;
+    });
+  }
 
   // Bold **text** or __text__
   result = result.replace(/\*\*([^*]+)\*\*/g, (_, t) => chalk.bold(t));
@@ -162,8 +178,9 @@ function renderInline(text) {
   result = result.replace(/(?<!-)\b([Mm]oderate)\b(?!-)/g, (match) => chalk.yellow(match));
   result = result.replace(/(?<!-)\b([Hh]igh|[Cc]ritical)\b(?!-)/g, (match) => chalk.rgb(255, 80, 0)(match));
 
-  // Restore code spans
+  // Restore placeholders
   result = result.replace(/\x00CODE(\d+)\x00/g, (_, idx) => codeSpans[parseInt(idx, 10)]);
+  result = result.replace(/\x00PORT(\d+)\x00/g, (_, idx) => portSpans[parseInt(idx, 10)]);
 
   return result;
 }

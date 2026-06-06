@@ -97,9 +97,18 @@ export function getListeningPortsRaw() {
     const pid = parseInt(parts[parts.length - 1], 10);
     if (isNaN(pid) || pid === 0) continue;
 
-    const bindMatch = localAddr.match(/^([^:]+):/);
-    let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
-    if (bindAddress === "*" || bindAddress === "*.*" || bindAddress === "[::]") bindAddress = "0.0.0.0";
+    let bindAddress = "0.0.0.0";
+    const ipv6Match = localAddr.match(/^\[([^\]]*)\]:/);
+    if (ipv6Match) {
+      const v6 = ipv6Match[1];
+      bindAddress = (v6 === "::" || v6 === "" || v6 === "*") ? "0.0.0.0" : v6;
+    } else {
+      const ipv4Match = localAddr.match(/^([^:]+):/);
+      if (ipv4Match) {
+        const v4 = ipv4Match[1];
+        bindAddress = (v4 === "*" || v4 === "*.*") ? "0.0.0.0" : v4;
+      }
+    }
 
     portMap.set(port, true);
     pidsToResolve.add(pid);

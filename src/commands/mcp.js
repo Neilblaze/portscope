@@ -145,14 +145,29 @@ export async function mcpCommand(args) {
 
   if (transportArg === "sse") {
     const app = express();
-    let transport;
+
+    const transports = new Map();
+    let sessionCounter = 0;
 
     app.get("/sse", async (req, res) => {
-      transport = new SSEServerTransport("/message", res);
-      await server.connect(transport);
+      const sessionId = ++sessionCounter;
+
+      const newTransport = new SSEServerTransport("/message", res);
+      transports.set(sessionId, newTransport);
+
+      res.on("close", () => {
+        transports.delete(sessionId);
+      });
+
+      await server.connect(newTransport);
     });
 
     app.post("/message", express.json(), async (req, res) => {
+      const requestedId = req.query.sessionId ? parseInt(req.query.sessionId, 10) : null;
+      const transport = requestedId
+        ? transports.get(requestedId)
+        : transports.get(Math.max(...transports.keys()));
+
       if (transport) {
         await transport.handlePostMessage(req, res);
       } else {

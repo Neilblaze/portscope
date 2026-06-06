@@ -70,6 +70,10 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
           results[t] = { error: `No process found for ${t}` };
           continue;
         }
+        if (resolved.blocked) {
+          results[t] = { blocked: true, pid: resolved.pid, error: resolved.reason };
+          continue;
+        }
         const ok = await killProcess(resolved.pid, signal, rl);
         if (ok) {
           results[t] = { success: true, pid: resolved.pid, signal };
@@ -444,9 +448,11 @@ function spawnProcessExecutor(command, cwd, useShell) {
 
 
 function confirm(message, existingRl) {
+  const g = chalk.gray;
+  const promptText = `  ${g("│")}\n  ${g("╰─")}${chalk.cyan("⊛")} ${chalk.yellow(message)} ${chalk.dim("[y/N]")} `;
   return new Promise((resolve) => {
     if (existingRl) {
-      existingRl.question(chalk.yellow(`  ${message} [y/N] `), (answer) => {
+      existingRl.question(promptText, (answer) => {
         resolve(answer.trim().toLowerCase() === "y");
       });
     } else {
@@ -454,7 +460,7 @@ function confirm(message, existingRl) {
         input: process.stdin,
         output: process.stdout,
       });
-      rl.question(chalk.yellow(`  ${message} [y/N] `), (answer) => {
+      rl.question(promptText, (answer) => {
         rl.close();
         resolve(answer.trim().toLowerCase() === "y");
       });

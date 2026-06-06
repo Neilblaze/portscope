@@ -2,16 +2,9 @@ import { execSync } from "child_process";
 import { basename } from "path";
 import { getPlatform } from "../platform/index.js";
 import { promptSudoAction } from "../utils/sudo.js";
-import {
-  findProjectRoot,
-  formatUptime,
-  formatMemory,
-  summarizeCommand,
-} from "./utils.js";
-import {
-  detectFramework,
-  detectFrameworkFromCommand,
-} from "./framework.js";
+import { isSystemProcess, formatBlockMessage } from "./system-guard.js";
+import { findProjectRoot, formatUptime, formatMemory, summarizeCommand } from "./utils.js";
+import { detectFramework, detectFrameworkFromCommand } from "./framework.js";
 import { getListeningPorts, getPortDetails } from "./ports.js";
 
 
@@ -79,7 +72,13 @@ export function pidExists(pid) {
 }
 
 
-export async function killProcess(pid, signal = "SIGTERM", rl) {
+export async function killProcess(pid, signal = "SIGTERM", rl, processName) {
+  const guard = isSystemProcess(pid, processName);
+  if (guard.blocked) {
+    process.stderr.write(`\n${formatBlockMessage(pid, processName, guard.reason)}\n\n`);
+    return false;
+  }
+
   if (process.platform === "win32" && signal === "SIGKILL") {
     try {
       execSync(`taskkill /F /PID ${pid}`, {
@@ -110,10 +109,25 @@ export async function killProcess(pid, signal = "SIGTERM", rl) {
 
 export async function resolveKillTarget(n) {
   if (!Number.isInteger(n) || n < 1) return null;
+
+  const pidGuard = isSystemProcess(n);
+  if (pidGuard.blocked) {
+    return { blocked: true, pid: n, reason: pidGuard.reason };
+  }
+
   if (n <= 65535) {
     const info = await getPortDetails(n);
-    if (info) return { pid: info.pid, via: "port", port: n, info };
+    if (info) {
+      const nameGuard = isSystemProcess(info.pid, info.processName);
+      if (nameGuard.blocked) {
+        return { blocked: true, pid: info.pid, processName: info.processName, reason: nameGuard.reason };
+      }
+      return { pid: info.pid, via: "port", port: n, info };
+    }
   }
-  if (pidExists(n)) return { pid: n, via: "pid" };
+
+  if (pidExists(n)) {
+    return { pid: n, via: "pid" };
+  }
   return null;
 }

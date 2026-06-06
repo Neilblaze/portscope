@@ -125,6 +125,13 @@ export async function killCommand(filteredArgs, rl) {
       continue;
     }
 
+    if (resolved.blocked) {
+      console.log(chalk.red(`  ⛊  Blocked — PID ${resolved.pid}${resolved.processName ? ` (${resolved.processName})` : ""}`));
+      console.log(chalk.red(`     ${resolved.reason}`));
+      anyFailed = true;
+      continue;
+    }
+
     const { pid, via } = resolved;
     const label =
       via === "port"

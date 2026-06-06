@@ -31,9 +31,18 @@ export function getListeningPortsRaw() {
     if (!portMatch) continue;
     const port = parseInt(portMatch[1], 10);
 
-    const bindMatch = nameField.match(/^([^:]+):/);
-    let bindAddress = bindMatch ? bindMatch[1] : "0.0.0.0";
-    if (bindAddress === "*" || bindAddress === "*.*") bindAddress = "0.0.0.0";
+    let bindAddress = "0.0.0.0";
+    const ipv6Match = nameField.match(/^\[([^\]]*)\]:/);
+    if (ipv6Match) {
+      const v6 = ipv6Match[1];
+      bindAddress = (v6 === "::" || v6 === "" || v6 === "*") ? "0.0.0.0" : v6;
+    } else {
+      const ipv4Match = nameField.match(/^([^:]+):/);
+      if (ipv4Match) {
+        const v4 = ipv4Match[1];
+        bindAddress = (v4 === "*" || v4 === "*.*") ? "0.0.0.0" : v4;
+      }
+    }
 
     if (portMap.has(port)) continue;
     portMap.set(port, true);

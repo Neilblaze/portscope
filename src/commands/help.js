@@ -51,6 +51,23 @@ export function helpCommand() {
     `    ${chalk.cyan("portscope watch")}          Monitor port changes live`,
   );
   console.log(
+    `    ${chalk.cyan("portscope watch --fe")}     Watch any specific type of port`,
+  );
+  console.log(
+    `    ${chalk.cyan("portscope watch --fe,be")} Watch frontend + backend`,
+  );
+  console.log(
+    `    ${chalk.cyan("portscope watch --ar")}     Auto-restart crashed ports`,
+  );
+  console.log();
+  console.log(
+    chalk.dim(`    Here, fe=frontend, be=backend, db=database, api=backend`),
+  );
+  console.log(
+    chalk.dim(`          ml=ml/ai, ui=frontend`),
+  );
+  console.log();
+  console.log(
     `    ${chalk.cyan("portscope chat")}           AI-powered conversation mode`,
   );
   console.log(

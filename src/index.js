@@ -53,7 +53,7 @@ async function main() {
       await logsCommand(filteredArgs);
       break;
     case "watch":
-      await watchCommand();
+      await watchCommand(filteredArgs);
       break;
     case "chat":
       await chatCommand(verbose);

@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { createInterface } from "readline";
+// import { createInterface } from "readline";
 import { loadConfig, getApiKey } from "../config/loader.js";
 import { listCommand } from "./list.js";
 import { inspectCommand } from "./inspect.js";
@@ -171,7 +171,7 @@ export async function interactiveMode(showAll, verbose = false) {
 
         if (intent.type === "injection_attempt") {
           console.log();
-          console.log(chalk.yellow(`  🛡️  ${intent.response}`));
+          console.log(chalk.yellow(`  ⛊️  ${intent.response}`));
           console.log();
           return;
         }
@@ -328,10 +328,14 @@ async function handleDirectCommand(input, rl) {
       return true;
 
     case "watch":
-      try {
-        await watchCommand();
-      } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+      {
+        const extraTokens = parts.slice(1).filter((p) => !p.startsWith("--"));
+        if (extraTokens.length > 0) return false;
+        try {
+          await watchCommand(parts, rl);
+        } catch (err) {
+          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        }
       }
       return true;
 
@@ -417,7 +421,13 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);
   console.log(`  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`);
-  console.log(`  ${chalk.cyan("watch")}            Monitor port changes`);
+  console.log(`  ${chalk.cyan("watch")}            Monitor port changes live`);
+  console.log(`  ${chalk.cyan("watch --ar")}       Auto-restart crashed ports`);
+  console.log(`  ${chalk.cyan("watch --fe")}       Watch any specific type of port`);
+  console.log(`  ${chalk.cyan("watch --fe,be")}    Watch frontend + backend`);
+  console.log();
+  console.log(chalk.dim("  Here, fe=frontend, be=backend, db=database, api=backend"));
+  console.log(chalk.dim("        ml=ml/ai, ui=frontend"));
   console.log();
   console.log(chalk.rgb(255, 140, 0).bold("  AI & Config"));
   console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));

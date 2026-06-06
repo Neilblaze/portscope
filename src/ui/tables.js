@@ -79,13 +79,13 @@ export async function displayPortTable(ports, filtered = false, showBanner = tru
   const count = chalk.white.bold(ports.length);
   const suffix = ports.length === 1 ? "port" : "ports";
   const allHint = filtered
-    ? chalk.dim("  ·  ") +
+    ? chalk.dim(" ·  ") +
     chalk.cyan("--all") +
     chalk.dim(" to show everything")
     : "";
   console.log(
     chalk.dim(`  ${count} ${chalk.dim(suffix)} active`) +
-    chalk.dim("  ·  ") +
+    chalk.dim(" · ") +
     chalk.dim("Run ") +
     chalk.cyan("portscope <port>") +
     chalk.dim(" for details") +

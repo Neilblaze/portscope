@@ -212,7 +212,7 @@ async function historyRestart(port, rl) {
  *
  * Returns the child process or null on failure.
  */
-function spawnProcess(command, cwd, useShell) {
+export function spawnProcess(command, cwd, useShell) {
   try {
     let child;
     if (useShell) {

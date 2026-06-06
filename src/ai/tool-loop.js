@@ -114,6 +114,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
   const { verbose = false } = options;
   const t0 = Date.now();
   let tookAction = false;
+  let hasPromptedDestructive = false;
 
   let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0);
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
@@ -128,7 +129,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
     tookAction = true;
 
     if (response.text) {
-      console.log(renderMarkdown(response.text, true));
+      console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0));
     }
 
     messages.push({
@@ -139,6 +140,9 @@ export async function processConversation(config, apiKey, messages, rl, options 
 
     const toolResults = [];
     for (const tc of response.toolCalls) {
+      if (DESTRUCTIVE_TOOLS.has(tc.name)) {
+        hasPromptedDestructive = true;
+      }
       const result = await executeToolCall(tc, rl, verbose);
       toolResults.push({ id: tc.id, result });
     }
@@ -161,7 +165,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
   }
 
   if (response.text) {
-    console.log(renderMarkdown(response.text, true) + "\n");
+    console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0) + "\n");
 
     if (!tookAction) {
       const lastUserMsg = messages.slice().reverse().find(m => m.role === "user");
