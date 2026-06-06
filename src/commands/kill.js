@@ -1,6 +1,8 @@
 import { resolveKillTarget, killProcess } from "../scanner/process.js";
-import { getListeningPorts } from "../scanner/ports.js";
+import { getListeningPorts, getPortDetails } from "../scanner/ports.js";
 import { isDevProcess } from "../scanner/utils.js";
+import { recordKill } from "../scanner/kill-history.js";
+import { resolveDevCommand } from "../scanner/dev-command.js";
 import chalk from "chalk";
 import { createInterface } from "readline";
 
@@ -134,6 +136,14 @@ export async function killCommand(filteredArgs, rl) {
     if (ok) {
       console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
       killed++;
+
+      if (via === "port" && resolved.info) {
+        try {
+          const details = resolved.info;
+          const devCmd = resolveDevCommand(details.cwd, details.framework, resolved.port);
+          recordKill(resolved.port, details, devCmd?.command || null);
+        } catch { }
+      }
     } else {
       console.log(
         chalk.red(`  ✕ Failed. Try: sudo kill${force ? " -9" : ""} ${pid}`),
@@ -224,6 +234,11 @@ async function killAllDevPorts(force, signal, rl) {
     if (ok) {
       console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
       killed++;
+
+      try {
+        const devCmd = resolveDevCommand(p.cwd, p.framework, p.port);
+        recordKill(p.port, p, devCmd?.command || null);
+      } catch { }
     } else {
       console.log(chalk.red(`  ✕ Failed: ${label}`));
       failed++;

@@ -19,6 +19,8 @@ import { sanitizePath } from "../scanner/sanitize.js";
 import { parseCommand } from "../commands/restart.js";
 import { getPlatform } from "../platform/index.js";
 import { sanitizeForAI } from "../config/sanitize-data.js";
+import { recordKill, getKillHistory, clearKillHistory } from "../scanner/kill-history.js";
+import { resolveDevCommand } from "../scanner/dev-command.js";
 
 
 
@@ -69,9 +71,19 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
           continue;
         }
         const ok = await killProcess(resolved.pid, signal, rl);
-        results[t] = ok
-          ? { success: true, pid: resolved.pid, signal }
-          : { success: false, error: `Failed to kill PID ${resolved.pid}` };
+        if (ok) {
+          results[t] = { success: true, pid: resolved.pid, signal };
+
+          if (resolved.via === "port" && resolved.info) {
+            try {
+              const details = resolved.info;
+              const devCmd = resolveDevCommand(details.cwd, details.framework, resolved.port);
+              recordKill(resolved.port, details, devCmd?.command || null);
+            } catch { }
+          }
+        } else {
+          results[t] = { success: false, error: `Failed to kill PID ${resolved.pid}` };
+        }
       }
       return results;
     }
@@ -115,9 +127,16 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
           continue;
         }
         seenPids.add(p.pid);
-        if (await killProcess(p.pid, signal, rl))
+        if (await killProcess(p.pid, signal, rl)) {
           killResults.killed.push({ port: p.port, pid: p.pid });
-        else killResults.failed.push({ port: p.port, pid: p.pid });
+
+          try {
+            const devCmd = resolveDevCommand(p.cwd, p.framework, p.port);
+            recordKill(p.port, p, devCmd?.command || null);
+          } catch { }
+        } else {
+          killResults.failed.push({ port: p.port, pid: p.pid });
+        }
       }
       return killResults;
     }
@@ -139,7 +158,7 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
         });
 
         const lines = content.split("\n");
-        const charBudget = 8000; // ~2000 tokens — generous for diagnostics
+        const charBudget = 8000;
         if (content.length > charBudget && lines.length > 10) {
           let kept = [];
           let total = 0;
@@ -191,62 +210,88 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
     case "restart_process": {
       const port = input.port;
       const resolved = await resolveKillTarget(port);
-      if (!resolved || resolved.via !== "port") {
-        return { error: `No process found on port ${port}` };
+
+      if (resolved && resolved.via === "port") {
+        const { pid, info } = resolved;
+        const rawCommand = info?.command || "";
+        const cwd = info?.cwd || process.cwd();
+        const processName = info?.processName || "unknown";
+
+        if (!rawCommand) {
+          return { error: `Could not capture command for PID ${pid} — cannot restart` };
+        }
+        if (processName === "docker") {
+          return { error: `Port ${port} is Docker-managed. Use \`docker restart\` instead.` };
+        }
+
+        const devResolved = resolveDevCommand(cwd, info?.framework, port);
+        const restartCmd = devResolved?.command || rawCommand;
+        const restartCwd = devResolved?.cwd || cwd;
+        const useShell = !!devResolved;
+
+        const signal = input.force ? "SIGKILL" : "SIGTERM";
+        const killed = await killProcess(pid, signal, rl);
+        if (!killed) {
+          return { error: `Failed to kill PID ${pid}` };
+        }
+
+        try {
+          recordKill(port, info, devResolved?.command || null);
+        } catch { }
+
+        const freed = await waitForPortFreeExecutor(port, pid);
+        if (!freed) {
+          return { error: `Port ${port} did not free within 5s after killing PID ${pid}` };
+        }
+
+        const child = spawnProcessExecutor(restartCmd, restartCwd, useShell);
+        if (!child) {
+          return { error: `Failed to relaunch: ${restartCmd}` };
+        }
+
+        const newPid = await waitForPortBoundExecutor(port);
+        if (newPid) clearKillHistory(port);
+
+        return {
+          success: true,
+          port,
+          killedPid: pid,
+          processName,
+          newPid: newPid || child.pid,
+          portBound: newPid !== null,
+        };
+      } else {
+        const history = getKillHistory(port);
+        if (!history) {
+          return { error: `No process found on port ${port} and no recent kill history available` };
+        }
+
+        const restartCmd = history.devCommand || history.command;
+        const restartCwd = history.cwd;
+        const processName = history.processName || "unknown";
+        const useShell = !!history.devCommand;
+
+        if (!restartCmd || !restartCwd) {
+          return { error: `Kill history exists for port ${port} but command/cwd is missing — cannot restart` };
+        }
+
+        const child = spawnProcessExecutor(restartCmd, restartCwd, useShell);
+        if (!child) {
+          return { error: `Failed to relaunch from history: ${restartCmd}` };
+        }
+
+        const newPid = await waitForPortBoundExecutor(port);
+        if (newPid) clearKillHistory(port);
+
+        return {
+          success: true,
+          port,
+          fromHistory: true,
+          processName,
+          newPid: newPid || child.pid,
+          portBound: newPid !== null,
+        };
       }
-
-      const { pid, info } = resolved;
-      const command = info?.command || "";
-      const cwd = info?.cwd || process.cwd();
-      const processName = info?.processName || "unknown";
-
-      if (!command) {
-        return { error: `Could not capture command for PID ${pid} — cannot restart` };
-      }
-      if (processName === "docker") {
-        return { error: `Port ${port} is Docker-managed. Use \`docker restart\` instead.` };
-      }
-
-      const signal = input.force ? "SIGKILL" : "SIGTERM";
-      const killed = await killProcess(pid, signal, rl);
-      if (!killed) {
-        return { error: `Failed to kill PID ${pid}` };
-      }
-
-      const freed = await waitForPortFreeExecutor(port, pid);
-      if (!freed) {
-        return { error: `Port ${port} did not free within 5s after killing PID ${pid}` };
-      }
-
-      const [executable, ...spawnArgs] = parseCommand(command);
-      if (!executable) {
-        return { error: `Could not parse command: ${command}` };
-      }
-
-      let child;
-      try {
-        child = spawn(executable, spawnArgs, {
-          cwd,
-          detached: true,
-          stdio: "ignore",
-          env: process.env,
-        });
-        child.unref();
-      } catch (err) {
-        return { error: `Failed to relaunch: ${err.message}` };
-      }
-
-      const newPid = await waitForPortBoundExecutor(port);
-
-      return {
-        success: true,
-        killedPid: pid,
-        processName,
-        command,
-        cwd,
-        newPid: newPid || child.pid,
-        portBound: newPid !== null,
-      };
     }
 
     case "get_port_connections": {
@@ -367,6 +412,35 @@ async function waitForPortBoundExecutor(port, timeoutMs = 8000) {
   return null;
 }
 
+
+function spawnProcessExecutor(command, cwd, useShell) {
+  try {
+    let child;
+    if (useShell) {
+      child = spawn(command, [], {
+        cwd,
+        shell: true,
+        detached: true,
+        stdio: "ignore",
+        env: { ...process.env },
+      });
+    } else {
+      const [executable, ...spawnArgs] = parseCommand(command);
+      if (!executable) return null;
+
+      child = spawn(executable, spawnArgs, {
+        cwd,
+        detached: true,
+        stdio: "ignore",
+        env: process.env,
+      });
+    }
+    child.unref();
+    return child;
+  } catch {
+    return null;
+  }
+}
 
 
 function confirm(message, existingRl) {
