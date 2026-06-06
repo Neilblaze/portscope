@@ -43,6 +43,7 @@ const SLASH_COMMANDS = [
  *   - Use slash commands (/provider, /models, etc.)
  */
 export async function interactiveMode(showAll, verbose = false) {
+  process.env.PORTSCOPE_REPL_ACTIVE = "true";
   console.clear();
 
   await listCommand(showAll, true);

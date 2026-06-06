@@ -32,16 +32,20 @@ const TABLE_STYLE = {
 export async function displayPortTable(ports, filtered = false, showBanner = true) {
   if (showBanner) await renderBanner();
 
+  const shouldIndent = process.env.PORTSCOPE_REPL_ACTIVE === "true" && !showBanner;
+  const prefix = shouldIndent ? "    " : "";
+
   // TODO: I'll try to make this a bit more better when I get some peace of mind and time :)
   if (ports.length === 0) {
-    console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Ports Found") + chalk.gray(" ────────────────────────╮"));
-    console.log(chalk.gray("  │                                         │"));
-    console.log(chalk.gray("  │  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
-    console.log(chalk.gray("  │  ") + chalk.white("dev servers right now.") + chalk.gray("                 │"));
-    console.log(chalk.gray("  │                                         │"));
-    console.log(chalk.gray("  │  ") + chalk.dim("Start your Next.js, Vite, or Python") + chalk.gray("    │"));
-    console.log(chalk.gray("  │  ") + chalk.dim("backend and run ") + chalk.cyan("portscope") + chalk.dim(" again.") + chalk.gray("       │"));
-    console.log(chalk.gray("  ╰─────────────────────────────────────────╯\n"));
+    const boxPrefix = shouldIndent ? "    " : "  ";
+    console.log(boxPrefix + chalk.gray("╭─ ") + chalk.yellow("No Ports Found") + chalk.gray(" ────────────────────────╮"));
+    console.log(boxPrefix + chalk.gray("│                                         │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.white("dev servers right now.") + chalk.gray("                 │"));
+    console.log(boxPrefix + chalk.gray("│                                         │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.dim("Start your Next.js, Vite, or Python") + chalk.gray("    │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.dim("backend and run ") + chalk.cyan("portscope") + chalk.dim(" again.") + chalk.gray("       │"));
+    console.log(boxPrefix + chalk.gray("╰─────────────────────────────────────────╯\n"));
     return;
   }
 
@@ -73,7 +77,12 @@ export async function displayPortTable(ports, filtered = false, showBanner = tru
     ]);
   }
 
-  console.log(table.toString());
+  const tableStr = table.toString();
+  if (shouldIndent) {
+    console.log(tableStr.split("\n").map((line) => prefix + line).join("\n"));
+  } else {
+    console.log(tableStr);
+  }
   console.log();
 
   const count = chalk.white.bold(ports.length);
@@ -84,7 +93,8 @@ export async function displayPortTable(ports, filtered = false, showBanner = tru
     chalk.dim(" to show everything")
     : "";
   console.log(
-    chalk.dim(`  ${count} ${chalk.dim(suffix)} active`) +
+    (shouldIndent ? "    " : "  ") +
+    chalk.dim(`${count} ${chalk.dim(suffix)} active`) +
     chalk.dim(" · ") +
     chalk.dim("Run ") +
     chalk.cyan("portscope <port>") +
@@ -98,15 +108,19 @@ export async function displayPortTable(ports, filtered = false, showBanner = tru
 export async function displayProcessTable(processes, filtered = false, showBanner = true) {
   if (showBanner) await renderBanner();
 
+  const shouldIndent = process.env.PORTSCOPE_REPL_ACTIVE === "true" && !showBanner;
+  const prefix = shouldIndent ? "    " : "";
+
   if (processes.length === 0) {
-    console.log(chalk.gray("  ╭─ ") + chalk.yellow("No Processes Found") + chalk.gray(" ────────────────────╮"));
-    console.log(chalk.gray("  │                                         │"));
-    console.log(chalk.gray("  │  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
-    console.log(chalk.gray("  │  ") + chalk.white("dev processes right now.") + chalk.gray("               │"));
-    console.log(chalk.gray("  │                                         │"));
-    console.log(chalk.gray("  │  ") + chalk.dim("Run ") + chalk.cyan("portscope ps --all") + chalk.dim(" to see all") + chalk.gray("      │"));
-    console.log(chalk.gray("  │  ") + chalk.dim("processes, including system apps.") + chalk.gray("       │"));
-    console.log(chalk.gray("  ╰─────────────────────────────────────────╯\n"));
+    const boxPrefix = shouldIndent ? "    " : "  ";
+    console.log(boxPrefix + chalk.gray("╭─ ") + chalk.yellow("No Processes Found") + chalk.gray(" ────────────────────╮"));
+    console.log(boxPrefix + chalk.gray("│                                         │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.white("PortScope didn't detect any active") + chalk.gray("     │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.white("dev processes right now.") + chalk.gray("               │"));
+    console.log(boxPrefix + chalk.gray("│                                         │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.dim("Run ") + chalk.cyan("portscope ps --all") + chalk.dim(" to see all") + chalk.gray("      │"));
+    console.log(boxPrefix + chalk.gray("│  ") + chalk.dim("processes, including system apps.") + chalk.gray("       │"));
+    console.log(boxPrefix + chalk.gray("╰─────────────────────────────────────────╯\n"));
     return;
   }
 
@@ -144,7 +158,12 @@ export async function displayProcessTable(processes, filtered = false, showBanne
     ]);
   }
 
-  console.log(table.toString());
+  const tableStr = table.toString();
+  if (shouldIndent) {
+    console.log(tableStr.split("\n").map((line) => prefix + line).join("\n"));
+  } else {
+    console.log(tableStr);
+  }
   console.log();
   const count = chalk.white.bold(processes.length);
   const suffix = processes.length === 1 ? "process" : "processes";
@@ -153,6 +172,6 @@ export async function displayProcessTable(processes, filtered = false, showBanne
     chalk.cyan("--all") +
     chalk.dim(" to show everything")
     : "";
-  console.log(chalk.dim(`  ${count} ${chalk.dim(suffix)}`) + allHint);
+  console.log((shouldIndent ? "    " : "  ") + chalk.dim(`${count} ${chalk.dim(suffix)}`) + allHint);
   console.log();
 }
