@@ -1,0 +1,12 @@
+# Gitleaks configuration file
+# This configuration extends the default Gitleaks rules while allowlisting
+# test files that contain intentional fake/mock credentials for validation.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore test files that contain mock/dummy secrets for testing masking and sanitization"
+paths = [
+    '''tests/.*'''
+]
