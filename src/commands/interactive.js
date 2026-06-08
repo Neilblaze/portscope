@@ -136,6 +136,7 @@ export async function interactiveMode(showAll, verbose = false) {
         }
 
         if (trimmed.startsWith("/")) {
+          await animateSlashCommand(promptPrefix, input);
           const result = await handleSlashCommand(trimmed, state, messages, rl);
           if (result === "exit") {
             rl.close();
@@ -407,6 +408,63 @@ async function handleDirectCommand(input, rl) {
 
 
 
+async function animateSlashCommand(promptPrefix, input) {
+  const trimmed = input.trim();
+  if (!trimmed.startsWith("/")) return false;
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+
+  const noArgs = ["/help", "/exit", "/quit", "/clear", "/provider", "/providers", "/revoke", "/models", "/status", "/usage", "/verbose"];
+  const oneArg = ["/model", "/history", "/load", "/export"];
+
+  let isValid = false;
+  let baseCmd = "";
+  let restStr = "";
+
+  if (noArgs.includes(cmd) && parts.length === 1) {
+    isValid = true;
+    baseCmd = input.trimEnd();
+  } else if (oneArg.includes(cmd) && parts.length <= 2) {
+    isValid = true;
+    const match = input.match(/^(\s*\/\w+)(\s+.*)?$/);
+    if (match) {
+      baseCmd = match[1];
+      restStr = match[2] || "";
+    } else {
+      baseCmd = input.trimEnd();
+    }
+  }
+  if (!isValid) return false;
+
+  const colorMap = {
+    "/exit": "red", "/quit": "red",
+    "/clear": "yellow", "/revoke": "yellow",
+    "/verbose": "green", "/status": "green", "/usage": "green"
+  };
+  
+  const baseColor = colorMap[cmd] || "cyan";
+  const brightColor = baseColor + "Bright";
+  
+  const frames = [
+    chalk[baseColor],
+    chalk[brightColor],
+    chalk[brightColor].bold,
+    chalk[brightColor],
+    chalk[baseColor]
+  ];
+
+  process.stdout.write("\x1b[?25l");
+  for (const frame of frames) {
+    const styledCmd = frame(baseCmd);
+    const styledRest = restStr ? chalk.dim(restStr) : "";
+    process.stdout.write("\x1b[1A\x1b[2K\r" + promptPrefix + styledCmd + styledRest + "\n");
+    await new Promise(r => setTimeout(r, 40));
+  }
+  process.stdout.write("\x1b[?25h");
+  return true;
+}
+
 // NOTE: Maybe I'll add some more commands/options here.
 function printInteractiveHelp() {
   console.log();
@@ -450,6 +508,6 @@ function printInteractiveHelp() {
   console.log();
   console.log(chalk.dim("  Or just type naturally — e.g. \"show me what's using the most CPU\""));
   console.log(chalk.dim("  Attach images: include a path like ~/screenshot.png in your query"));
-  console.log(chalk.dim("  Type exit to quit · Tab-complete slash commands with /"));
+  console.log(chalk.dim("  Type exit to quit · Tab-complete slash commands with '/'"));
   console.log();
 }

@@ -47,7 +47,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
       if (parts[1]) {
         state.config.ai.model = parts.slice(1).join(" ");
         persistProviderChoice(state.config.ai.provider, state.config.ai.model);
-        console.log(chalk.green(`\n  ✓ Model set to ${chalk.bold(state.config.ai.model)}\n`));
+        console.log(`\n  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Model set to ${chalk.bold(state.config.ai.model)}`)}\n`);
       } else {
         await browseModels(state, rl);
       }
@@ -97,7 +97,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
           messages.length = 0;
           messages.push(...conv.messages);
           state.conversationId = conv.id;
-          console.log(chalk.green(`\n  ✓ Loaded conversation: ${chalk.bold(conv.title)}`));
+          console.log(`\n  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Loaded conversation: ${chalk.bold(conv.title)}`)}`);
           console.log(chalk.dim(`  ${conv.messages.length} messages restored.\n`));
         } else {
           console.log(chalk.red(`\n  Conversation not found.\n`));
@@ -127,7 +127,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
         };
         try {
           const filepath = exportConversation(conv, format);
-          console.log(chalk.green(`\n  ✓ Exported to ${chalk.bold(filepath)}\n`));
+          console.log(`\n  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Exported to ${chalk.bold(filepath)}`)}\n`);
         } catch (err) {
           console.log(chalk.red(`\n  Export failed: ${sanitizeError(err)}\n`));
         }
@@ -137,9 +137,9 @@ export async function handleSlashCommand(input, state, messages, rl) {
     case "verbose":
       state.verbose = !state.verbose;
       if (state.verbose) {
-        console.log(chalk.green(`\n  ✓ Verbose mode ${chalk.bold("enabled")} — streaming & detailed tool output`));
+        console.log(`\n  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Verbose mode ${chalk.bold("enabled")} — streaming & detailed tool output`)}`);
       } else {
-        console.log(chalk.green(`\n  ✓ Verbose mode ${chalk.bold("disabled")} — compact output`));
+        console.log(`\n  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.yellow(`Verbose mode ${chalk.bold("disabled")} — compact output`)}`);
       }
       console.log();
       return;
@@ -187,7 +187,7 @@ function printSlashHelp() {
     "",
     chalk.dim('  Or just type naturally — e.g. "show me what\'s using the most CPU"'),
     chalk.dim("  Attach images: include a path like ~/screenshot.png in your query"),
-    chalk.dim("  Type exit to quit · Tab-complete slash commands with /"),
+    chalk.dim("  Type exit to quit · Tab-complete slash commands with '/'"),
     "",
   ];
 

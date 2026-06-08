@@ -179,7 +179,7 @@ export function displayAutoRestart(port, status, details = {}) {
     console.log(output);
   } else if (status === "success") {
     const pidStr = details.newPid ? chalk.gray(` (PID ${details.newPid})`) : "";
-    const output = `  ${timestamp} ${chalk.green("✓ RESTARTED")} :${portStr}${pidStr}`;
+    const output = `  ${timestamp} ${chalk.green("✔ RESTARTED")} :${portStr}${pidStr}`;
     console.log(output);
   } else if (status === "failed") {
     const reason = details.reason || "unknown error";

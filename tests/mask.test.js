@@ -64,7 +64,7 @@ describe("maskApiKey", () => {
     assert.ok(masked.includes("*"));
   });
 
-  it("should preserve total length after masking", () => {
+  it("should preserve total length for short keys, or cap at 32 chars", () => {
     const keys = [
       "sk-1234567890abcdefghijklmnop",
       "short",
@@ -74,7 +74,8 @@ describe("maskApiKey", () => {
 
     for (const key of keys) {
       const masked = maskApiKey(key);
-      assert.strictEqual(masked.length, key.length, `Length mismatch for key: ${key}`);
+      const expectedLength = Math.min(key.length, 32);
+      assert.strictEqual(masked.length, expectedLength, `Length mismatch for key: ${key}`);
     }
   });
 });

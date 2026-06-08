@@ -8,11 +8,11 @@ const METRICS_FILE = join(homedir(), ".portscope", "metrics.json");
 let currentProvider = null;
 let currentModel = null;
 
-// NOTE: Per-session usage accumulator 
 export let session = {
   inputTokens: 0,
   outputTokens: 0,
   apiCalls: 0,
+  compactions: 0,
   startedAt: Date.now(),
 };
 
@@ -29,6 +29,7 @@ function syncMetrics(provider, model) {
         session.inputTokens = data.inputTokens || 0;
         session.outputTokens = data.outputTokens || 0;
         session.apiCalls = data.apiCalls || 0;
+        session.compactions = data.compactions || 0;
         session.startedAt = data.startedAt || Date.now();
         callHistory = [];
         if (data.callHistory) callHistory.push(...data.callHistory);
@@ -41,6 +42,7 @@ function syncMetrics(provider, model) {
     session.inputTokens = 0;
     session.outputTokens = 0;
     session.apiCalls = 0;
+    session.compactions = 0;
     session.startedAt = Date.now();
     callHistory = [];
   }
@@ -59,6 +61,7 @@ function saveMetrics() {
     inputTokens: session.inputTokens,
     outputTokens: session.outputTokens,
     apiCalls: session.apiCalls,
+    compactions: session.compactions,
     startedAt: session.startedAt,
     callHistory
   };
@@ -126,6 +129,20 @@ export function trackUsage(provider, model, usage, latencyMs) {
   session.outputTokens += output;
   session.apiCalls += 1;
 
+  const MAX_TOKENS = 128000;
+  const THRESHOLD = 0.85 * MAX_TOKENS;
+  const RESET_TO = 0.15 * MAX_TOKENS;
+
+  if (session.inputTokens + session.outputTokens >= THRESHOLD) {
+    const excess = (session.inputTokens + session.outputTokens) - RESET_TO;
+    session.inputTokens -= excess;
+    if (session.inputTokens < 0) {
+      session.outputTokens += session.inputTokens;
+      session.inputTokens = 0;
+    }
+    session.compactions += 1;
+  }
+
   callHistory.push({
     timestamp: Date.now(),
     inputTokens: input,
@@ -143,6 +160,7 @@ export function resetUsage() {
   session.inputTokens = 0;
   session.outputTokens = 0;
   session.apiCalls = 0;
+  session.compactions = 0;
   session.startedAt = Date.now();
   callHistory = [];
   saveMetrics();
@@ -310,7 +328,7 @@ export async function printUsage(state) {
   console.log(`  ${rows[1]}   ${chalk.magenta("▤")} Output: ${formatCompact(outTokens)} tokens (${outPct}%)`);
   console.log(`  ${rows[2]}   ${chalk.gray("◻")} Free space: ${formatCompact(freeTokens)} tokens (${freePct}%)`);
   console.log(`  ${rows[3]}`);
-  console.log(`  ${rows[4]}`);
+  console.log(`  ${rows[4]}   ${chalk.rgb(128, 255, 100)("⏏")} Context Compactions: ${session.compactions}`);
   console.log();
 
   // ── Connection Ping ───────────────────────────────────────────────────
@@ -388,7 +406,7 @@ async function measurePing(state, provider) {
     const res = await fetch(url, fetchOpts);
     const elapsed = Date.now() - start;
     let icon;
-    if (res.ok || res.status === 400) icon = chalk.green("✓");
+    if (res.ok || res.status === 400) icon = chalk.green("✔");
     else if (res.status === 401 || res.status === 403) return { error: "auth error", elapsed, label };
     else return { error: `HTTP ${res.status}`, elapsed, label };
 

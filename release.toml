@@ -1,0 +1,22 @@
+[release]
+name = "portscope"
+tag-prefix = "v"
+pre-release = false
+commit-message = "chore(release): bump version to {{version}}"
+
+[git]
+commit = true
+tag = true
+tag-name = "v{{version}}"
+push = false
+sign-commit = false
+sign-tag = false
+
+[github]
+release = true
+release-name = "PortScope v{{version}}"
+draft = true
+
+[npm]
+publish = true
+registry = "https://npm.pkg.github.com"

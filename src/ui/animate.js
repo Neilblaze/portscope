@@ -40,11 +40,11 @@ export async function sweepClear(lineCount) {
  */
 export async function flashSuccess(message) {
   if (!process.stdout.isTTY) {
-    console.log(chalk.green(`  ✓ ${message}`));
+    console.log(chalk.green(`  ✔ ${message}`));
     return;
   }
-  process.stdout.write(chalk.bgGreen.black(` ✓ ${message} `) + "\r");
+  process.stdout.write(chalk.bgGreen.black(` ✔ ${message} `) + "\r");
   await sleep(250);
   process.stdout.write("\x1b[2K\r");
-  console.log(chalk.green(`  ✓ ${message}`));
+  console.log(chalk.green(`  ✔ ${message}`));
 }

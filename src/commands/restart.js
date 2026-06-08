@@ -93,7 +93,7 @@ async function liveRestart(port, resolved, force, rl) {
     process.exitCode = 1;
     return;
   }
-  console.log(chalk.green(`  ✓ Killed ${processName} (PID ${pid})`));
+  console.log(chalk.green(`  ✔ Killed ${processName} (PID ${pid})`));
 
   try {
     recordKill(port, info, devResolved?.command || null);
@@ -116,10 +116,10 @@ async function liveRestart(port, resolved, force, rl) {
   const newPid = await waitForPortBound(port, child.pid);
 
   if (newPid) {
-    console.log(chalk.green(`  ✓ Relaunched: ${truncateCommand(restartCommand, 60)} ${chalk.gray(`(new PID ${newPid})`)}`));
+    console.log(chalk.green(`  ✔ Relaunched: ${truncateCommand(restartCommand, 60)} ${chalk.gray(`(new PID ${newPid})`)}`));
     clearKillHistory(port);
   } else {
-    console.log(chalk.green(`  ✓ Relaunched ${processName}`) + chalk.dim(` (PID ${child.pid} — port binding pending)`));
+    console.log(chalk.green(`  ✔ Relaunched ${processName}`) + chalk.dim(` (PID ${child.pid} — port binding pending)`));
   }
   console.log();
 }
@@ -192,10 +192,10 @@ async function historyRestart(port, rl) {
   const newPid = await waitForPortBound(port, child.pid);
 
   if (newPid) {
-    console.log(chalk.green(`  ✓ Relaunched: ${truncateCommand(restartCmd, 60)} ${chalk.gray(`(new PID ${newPid})`)}`));
+    console.log(chalk.green(`  ✔ Relaunched: ${truncateCommand(restartCmd, 60)} ${chalk.gray(`(new PID ${newPid})`)}`));
     clearKillHistory(port);
   } else {
-    console.log(chalk.green(`  ✓ Relaunched ${processName}`) + chalk.dim(` (PID ${child.pid} — port binding pending)`));
+    console.log(chalk.green(`  ✔ Relaunched ${processName}`) + chalk.dim(` (PID ${child.pid} — port binding pending)`));
   }
   console.log();
 }

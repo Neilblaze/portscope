@@ -2,6 +2,15 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.2] - 2026-06-09
+
+### Added
+- **Auto-Compaction** — Added an auto-compaction feature that silently resets tracking usage to 15% when context consumption hits 85% of the total limit (128k tokens) to maintain a lean UI and handle usage visualization.
+- **Context Compaction Metric** — The `/usage` dashboard now tracks and prominently displays the number of `⟲ Context Compactions` cycles during long chat sessions.
+- **GitHub Actions Test Coverage** — Added `.github/workflows/coverage.yml` to automatically execute the test suite using Node 20's native `--experimental-test-coverage` capability, ensuring reliable test coverage tracking on all pushes and PRs without external dependencies.
+- **Release Automation Config** — Added standardized `release.toml` configuration to root to support modern automated release tooling and CI/CD pipelines.
+
+
 ## [1.8.1] - 2026-06-07
 
 ### Added

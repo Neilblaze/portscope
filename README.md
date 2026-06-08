@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.8.1-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.2-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -122,9 +122,9 @@ Port ranges expand into individual kills — empty ports are silently skipped:
 $ portscope kill 3000-3005
 
   Killing :3000 — node (PID 41245)
-  ✓ Sent SIGTERM to :3000 — node (PID 41245)
+  ✔ Sent SIGTERM to :3000 — node (PID 41245)
   Killing :3001 — node (PID 91248)
-  ✓ Sent SIGTERM to :3001 — node (PID 91248)
+  ✔ Sent SIGTERM to :3001 — node (PID 91248)
 
   Range summary: 2 killed, 4 empty
 ```
@@ -161,7 +161,7 @@ $ portscope logs 3000 --lines 5
 
   ▲ Next.js 16.2.4 (Turbopack)
   - Local: http://localhost:3000
-  ✓ Ready in 192ms
+  ✔ Ready in 192ms
    GET / 200 in 920ms
    GET /api/auth/session 200 in 5ms
 ```
@@ -252,11 +252,11 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 | **Anthropic** | `claude-haiku-4-5` | curated list | `ANTHROPIC_API_KEY` |
 | **OpenAI** | `gpt-5-nano` | curated list | `OPENAI_API_KEY` |
 | **Google Gemini** | `gemini-2.5-flash` | curated list | `GEMINI_API_KEY` |
-| **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✓ live browse | `OPENROUTER_API_KEY` |
-| **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✓ live browse | `NVIDIA_API_KEY` |
+| **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✔ live browse | `OPENROUTER_API_KEY` |
+| **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✔ live browse | `NVIDIA_API_KEY` |
 | **Cerebras** | `llama-4-scout-17b-16e-instruct` | curated list | `CEREBRAS_API_KEY` |
 | **Groq** | `llama-3.3-70b-versatile` | curated list | `GROQ_API_KEY` |
-| **Ollama (Local)** | `llama3` | ✓ local list | *none — runs locally* |
+| **Ollama (Local)** | `llama3` | ✔ local list | *none — runs locally* |
 
 ### Setup
 

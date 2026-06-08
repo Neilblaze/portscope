@@ -141,7 +141,7 @@ export async function killCommand(filteredArgs, rl) {
     console.log(chalk.white(`  Killing ${label}`));
     const ok = await killProcess(pid, signal, rl);
     if (ok) {
-      console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
+      console.log(chalk.green(`  ✔ Sent ${signal} to ${label}`));
       killed++;
 
       if (via === "port" && resolved.info) {
@@ -239,7 +239,7 @@ async function killAllDevPorts(force, signal, rl) {
     const label = `:${p.port} — ${p.processName} (PID ${p.pid})`;
     const ok = await killProcess(p.pid, signal, rl);
     if (ok) {
-      console.log(chalk.green(`  ✓ Sent ${signal} to ${label}`));
+      console.log(chalk.green(`  ✔ Sent ${signal} to ${label}`));
       killed++;
 
       try {

@@ -6,7 +6,7 @@ import { SYSTEM_PROMPT } from "./prompt.js";
 import { prepareMessages } from "./context.js";
 import { trackUsage } from "./usage.js";
 import { sanitizeForAI } from "../config/sanitize-data.js";
-import { renderMarkdown, wrapAnsi } from "../ui/markdown.js";
+import { renderMarkdown, wrapAnsi, stripAnsi } from "../ui/markdown.js";
 import { startSpinner } from "../ui/spinner.js";
 
 
@@ -34,23 +34,98 @@ async function callAI(config, apiKey, messages, verbose, onChunk) {
 }
 
 
-async function callAIWithSpinner(config, apiKey, messages, verbose, t0) {
+async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLevel = 0) {
   if (verbose) {
-    let chunkCount = 0;
-    const interval = setInterval(() => {
-      const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      const label = chunkCount > 0
-        ? `Generating... (${chunkCount} chunks, ${elapsed}s)`
-        : `Thinking... (${elapsed}s)`;
-      process.stdout.write(`\r  💭 ${chalk.dim(label)}  `);
-    }, 200);
+    let fullText = "";
+    let lastRenderedLines = 0;
+    let isStreaming = false;
+
+    let spinnerInterval;
+    const startProgress = () => {
+      spinnerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+        process.stdout.write(`\r  💭 ${chalk.dim(`Thinking... (${elapsed}s)`)}  `);
+      }, 200);
+    };
+    startProgress();
 
     try {
-      const response = await callAI(config, apiKey, messages, true, () => { chunkCount++; });
+      const response = await callAI(config, apiKey, messages, true, (textDelta) => {
+        if (!isStreaming) {
+          isStreaming = true;
+          clearInterval(spinnerInterval);
+          process.stdout.write("\r\x1b[2K");
+        }
+        fullText += textDelta;
+
+        if (lastRenderedLines > 0) {
+          process.stdout.write(`\x1b[${lastRenderedLines}A\x1b[0J`);
+        }
+
+        const fullRendered = renderMarkdown(fullText, true, indentLevel);
+        if (fullRendered) {
+          const cols = process.stdout.columns || 80;
+          const termRows = process.stdout.rows || 24;
+          const maxLines = Math.max(10, termRows - 2);
+          
+          const rawLines = fullRendered.split("\n");
+          const wrappedLines = [];
+          for (const line of rawLines) {
+            const visibleLen = stripAnsi(line).length;
+            const height = Math.max(1, Math.ceil(visibleLen / cols));
+            wrappedLines.push({ text: line, height });
+          }
+          
+          const totalHeight = wrappedLines.reduce((sum, l) => sum + l.height, 0);
+          let rendered = fullRendered;
+          let linesCount = totalHeight;
+
+          if (totalHeight > maxLines) {
+            let topH = 0;
+            const topLines = [];
+            let i = 0;
+            while (i < wrappedLines.length && topH + wrappedLines[i].height <= 5) {
+              topLines.push(wrappedLines[i].text);
+              topH += wrappedLines[i].height;
+              i++;
+            }
+            
+            let botH = 0;
+            const botLines = [];
+            let j = wrappedLines.length - 1;
+            const avail = maxLines - topH - 1; 
+            while (j > i && botH + wrappedLines[j].height <= avail) {
+              botLines.unshift(wrappedLines[j].text);
+              botH += wrappedLines[j].height;
+              j--;
+            }
+            
+            rendered = [...topLines, chalk.dim("      ..."), ...botLines].join("\n");
+            linesCount = topH + 1 + botH;
+          }
+
+          process.stdout.write(rendered + "\n");
+          lastRenderedLines = linesCount;
+        } else {
+          lastRenderedLines = 0;
+        }
+      });
+
+      if (isStreaming) {
+        if (lastRenderedLines > 0) {
+          process.stdout.write(`\x1b[${lastRenderedLines}A\x1b[0J`);
+        }
+        if (fullText) {
+          process.stdout.write(renderMarkdown(fullText, true, indentLevel) + "\n");
+        }
+        response._streamRendered = true;
+      }
       return response;
     } finally {
-      clearInterval(interval);
-      process.stdout.write("\r\x1b[2K");
+      if (!isStreaming) {
+        clearInterval(spinnerInterval);
+        process.stdout.write("\r\x1b[2K");
+      }
     }
   } else {
     const spinner = startSpinner();
@@ -116,19 +191,22 @@ export async function processConversation(config, apiKey, messages, rl, options 
   let tookAction = false;
   let hasPromptedDestructive = false;
 
-  let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0);
+  let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0, hasPromptedDestructive ? 4 : 0);
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
 
   if (verbose && response.usage) {
     const { inputTokens: inT, outputTokens: outT } = response.usage;
-    console.log(chalk.dim(`  ↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${((Date.now() - t0) / 1000).toFixed(1)}s`));
+    const sec = (Date.now() - t0) / 1000;
+    const tps = sec > 0 ? (outT / sec).toFixed(1) : 0;
+    const indentStr = response.text ? "      " : "  ";
+    console.log(chalk.dim(`${indentStr}↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${sec.toFixed(1)}s · ${tps} tok/s`));
   }
 
   // Tool calling loop — AI can make multiple sequential rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
     tookAction = true;
 
-    if (response.text) {
+    if (response.text && !response._streamRendered) {
       console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0));
     }
 
@@ -154,18 +232,26 @@ export async function processConversation(config, apiKey, messages, rl, options 
     }));
     messages.push({ role: "user", toolResults: sanitizedResults });
 
+    const currentIndent = hasPromptedDestructive ? 4 : 0;
     const t1 = Date.now();
-    response = await callAIWithSpinner(config, apiKey, messages, verbose, t1);
+    response = await callAIWithSpinner(config, apiKey, messages, verbose, t1, currentIndent);
     trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
 
     if (verbose && response.usage) {
       const { inputTokens: inT, outputTokens: outT } = response.usage;
-      console.log(chalk.dim(`  ↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${((Date.now() - t1) / 1000).toFixed(1)}s`));
+      const sec = (Date.now() - t1) / 1000;
+      const tps = sec > 0 ? (outT / sec).toFixed(1) : 0;
+      const indentStr = response.text ? " ".repeat(6 + currentIndent) : "  ";
+      console.log(chalk.dim(`${indentStr}↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${sec.toFixed(1)}s · ${tps} tok/s`));
     }
   }
 
   if (response.text) {
-    console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0) + "\n");
+    if (!response._streamRendered) {
+      console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0) + "\n");
+    } else {
+      console.log();
+    }
 
     if (!tookAction) {
       const lastUserMsg = messages.slice().reverse().find(m => m.role === "user");

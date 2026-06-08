@@ -20,7 +20,7 @@ export async function inspectCommand(portNum) {
         if (answer.toLowerCase() === "y") {
           const success = await killProcess(info.pid, "SIGTERM", rl);
           if (success) {
-            console.log(chalk.green(`\n  ✓ Killed PID ${info.pid}\n`));
+            console.log(chalk.green(`\n  ✔ Killed PID ${info.pid}\n`));
           } else {
             console.log(
               chalk.red(`\n  ✕ Failed. Try: sudo kill -9 ${info.pid}\n`),

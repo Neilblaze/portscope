@@ -12,7 +12,7 @@ export function maskApiKey(key) {
   
   const visibleStart = key.slice(0, 5);
   const visibleEnd = key.slice(-4);
-  const maskedLength = key.length - 9;
+  const maskedLength = Math.min(key.length - 9, 23);
   
   return visibleStart + "*".repeat(maskedLength) + visibleEnd;
 }

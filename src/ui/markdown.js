@@ -196,8 +196,8 @@ function isTableSeparator(line) {
   return /^\s*\|[\s:]*[-]+[\s:]*(\|[\s:]*[-]+[\s:]*)*\|\s*$/.test(line);
 }
 
-function stripAnsi(str) {
-  return str.replace(/\x1B\[\d+;?\d*m/g, "");
+export function stripAnsi(str) {
+  return str.replace(/\x1B\[\d*(?:;\d*)*[a-zA-Z]/g, "");
 }
 
 export function wrapAnsi(text, width, firstIndent, subIndent) {

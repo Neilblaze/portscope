@@ -49,7 +49,7 @@ export async function pauseCommand(filteredArgs) {
 
   const ok = sendSignal(pid, "SIGSTOP");
   if (ok) {
-    console.log(chalk.green(`\n  ✓ Paused ${label}`));
+    console.log(chalk.green(`\n  ✔ Paused ${label}`));
     console.log(chalk.gray(`  Resume with: portscope resume ${target}\n`));
   } else {
     console.log(chalk.red(`\n  ✕ Failed to pause ${label}. Try: sudo kill -STOP ${pid}\n`));
@@ -104,7 +104,7 @@ export async function resumeCommand(filteredArgs) {
 
   const ok = sendSignal(pid, "SIGCONT");
   if (ok) {
-    console.log(chalk.green(`\n  ✓ Resumed ${label}\n`));
+    console.log(chalk.green(`\n  ✔ Resumed ${label}\n`));
   } else {
     console.log(chalk.red(`\n  ✕ Failed to resume ${label}. Try: sudo kill -CONT ${pid}\n`));
     process.exitCode = 1;

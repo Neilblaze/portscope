@@ -32,9 +32,9 @@ export function printStatus(state) {
   console.log(`  ${chalk.gray("Provider")}    ${chalk.white.bold(provider?.label || state.config.ai.provider)}`);
   console.log(`  ${chalk.gray("Model")}       ${chalk.white.bold(state.config.ai.model || "not set")}`);
   if (state.apiKey && state.apiKey !== "local") {
-    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✓")} ${chalk.dim(maskApiKey(state.apiKey))}`);
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✔")} ${chalk.dim(maskApiKey(state.apiKey))}`);
   } else if (state.apiKey === "local") {
-    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✓ local")}`);
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✔ local")}`);
   } else {
     console.log(`  ${chalk.gray("API Key")}     ${chalk.red("✕ missing")}`);
   }
@@ -70,7 +70,7 @@ export async function switchProvider(state, rl, messages = []) {
       keyStatus = chalk.dim(" (local)");
     } else {
       const hasKey = !!getApiKeyForProvider(id);
-      keyStatus = hasKey ? chalk.green(" ✓") : chalk.dim(" ○");
+      keyStatus = hasKey ? chalk.green(" ✔") : chalk.dim(" ○");
     }
     console.log(`  ${chalk.white.bold(i + 1)}  ${chalk.white(defaults.label)}${keyStatus}${marker}`);
   }
@@ -125,7 +125,7 @@ export async function switchProvider(state, rl, messages = []) {
       return;
     }
 
-    console.log(chalk.green(`  ✓ Ollama is running at ${endpoint}`));
+    console.log(chalk.green(`  ✔ Ollama is running at ${endpoint}`));
     state.config.ai.ollamaEndpoint = endpoint;
     apiKey = "local";
   } else if (!apiKey) {
@@ -150,7 +150,7 @@ export async function switchProvider(state, rl, messages = []) {
       return;
     }
 
-    console.log(chalk.green("  ✓ API key validated!"));
+    console.log(chalk.green("  ✔ API key validated!"));
     console.log(chalk.dim(`  Key: ${maskApiKey(key.trim())}`));
 
     saveApiKey(provider, key.trim());
@@ -158,7 +158,7 @@ export async function switchProvider(state, rl, messages = []) {
     console.log(chalk.gray(`  Saved to ~/.portscope/.env\n`));
   } else {
     console.log();
-    console.log(chalk.green(`  ✓ API key already configured for ${defaults.label}`));
+    console.log(chalk.green(`  ✔ API key already configured for ${defaults.label}`));
     console.log(chalk.dim(`  Key: ${maskApiKey(apiKey)}`));
     console.log();
   }
@@ -176,7 +176,7 @@ export async function switchProvider(state, rl, messages = []) {
   }
 
   console.log(
-    chalk.green(`  ✓ Switched to ${chalk.bold(defaults.label)}`) +
+    chalk.green(`  ✔ Switched to ${chalk.bold(defaults.label)}`) +
     (defaults.model ? chalk.gray(` (${defaults.model})`) : ""),
   );
 
@@ -235,7 +235,7 @@ export async function revokeApiKeyFlow(state, rl) {
   }
 
   revokeApiKey(providerToRevoke);
-  console.log(chalk.green(`  ✓ Revoked API key for ${defaults.label}\n`));
+  console.log(chalk.green(`  ✔ Revoked API key for ${defaults.label}\n`));
 
   if (state.config.ai.provider === providerToRevoke) {
     state.apiKey = null;
@@ -323,7 +323,7 @@ function selectModel(input, models, state) {
   if (!isNaN(num) && num >= 1 && num <= models.length) {
     state.config.ai.model = models[num - 1].id;
     persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
-    console.log(chalk.green(`  ✓ Model set to ${chalk.bold(state.config.ai.model)}\n`));
+    console.log(chalk.green(`  ✔ Model set to ${chalk.bold(state.config.ai.model)}\n`));
     return;
   }
 
@@ -333,7 +333,7 @@ function selectModel(input, models, state) {
   if (match) {
     state.config.ai.model = match.id;
     persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
-    console.log(chalk.green(`  ✓ Model set to ${chalk.bold(state.config.ai.model)}\n`));
+    console.log(chalk.green(`  ✔ Model set to ${chalk.bold(state.config.ai.model)}\n`));
   } else {
     state.config.ai.model = input;
     persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);

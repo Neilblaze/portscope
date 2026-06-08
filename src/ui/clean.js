@@ -8,7 +8,7 @@ export async function displayCleanResults(orphaned, killed, failed) {
 
   if (orphaned.length === 0) {
     console.log(
-      chalk.green("  ✓ No orphaned or zombie processes found. All clean!\n"),
+      chalk.green("  ✔ No orphaned or zombie processes found. All clean!\n"),
     );
     return;
   }
@@ -23,7 +23,7 @@ export async function displayCleanResults(orphaned, killed, failed) {
     const wasKilled = killed.includes(p.pid);
     const didFail = failed.includes(p.pid);
     const icon = wasKilled
-      ? chalk.green("✓")
+      ? chalk.green("✔")
       : didFail
         ? chalk.red("✕")
         : chalk.yellow("?");
