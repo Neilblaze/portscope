@@ -74,3 +74,9 @@ git push --tags
 ```
 
 *(Ensure you replace `v1.1.0` with the actual target version you are deploying).*
+
+OR, simply execute this in root directory (for reference):
+
+```sh
+./.release/release.sh --<version-number>
+```
