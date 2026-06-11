@@ -94,7 +94,7 @@ function getModelsFromPricingJson(provider) {
   try {
     const PRICING = getSyncedPricing();
     if (!PRICING || Object.keys(PRICING).length === 0) return [];
-    
+
     const prefix = `${provider}/`;
     const models = [];
     const seen = new Set();
@@ -130,7 +130,7 @@ function isChatModel(provider, id) {
   const ignored = [
     "embedding", "tts", "whisper", "sora", "dalle", "dall-e", "audio", "realtime",
     "moderation", "babbage", "davinci", "curie", "ada-",
-    "transcribe", "diarize", "search", "image"
+    "transcribe", "diarize", "search", "image", "codex", "chat-latest"
   ];
   if (ignored.some(p => lower.includes(p))) return false;
 

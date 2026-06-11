@@ -325,11 +325,12 @@ export async function browseModels(state, rl) {
     const trimmed = input.trim();
 
     if (isCancel(trimmed)) {
-      console.log(chalk.gray("  Cancelled.\n"));
+      console.log(`\n  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red("Cancelled!")}\n`);
       return;
     }
 
     if (showingFirstPage && trimmed.toLowerCase() === "n" && totalPages > 1) {
+      console.log();
       for (let p = 1; p < totalPages; p++) {
         displayPage(p);
       }
@@ -351,7 +352,7 @@ export async function browseModels(state, rl) {
       console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red("Too many invalid attempts. Cancelled.\n")}`);
       return;
     }
-    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`Model "${trimmed}" not found. Please pick from the list.`)}`);
+    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`Model "${trimmed}" not found. Please pick from the list.`)}\n`);
   }
 }
 

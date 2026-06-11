@@ -468,7 +468,7 @@ async function animateSlashCommand(promptPrefix, input) {
 function printInteractiveHelp() {
   console.log();
   console.log(chalk.rgb(255, 140, 0).bold("  Direct Commands") + chalk.dim("  (no AI needed)"));
-  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
+  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("<port>")}           Inspect a specific port`);
   console.log(`  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`);
   console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
@@ -479,7 +479,7 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);
   console.log(`  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`);
-  console.log(`  ${chalk.cyan("watch")}            Monitor port changes live`);
+  console.log(`  ${chalk.cyan("watch")}            Monitor port changes (LIVE)`);
   console.log(`  ${chalk.cyan("watch --ar")}       Auto-restart crashed ports`);
   console.log(`  ${chalk.cyan("watch --fe")}       Watch any specific type of port`);
   console.log(`  ${chalk.cyan("watch --fe,be")}    Watch frontend + backend`);
@@ -488,18 +488,18 @@ function printInteractiveHelp() {
   console.log(chalk.dim("        ml=ml/ai, ui=frontend"));
   console.log();
   console.log(chalk.rgb(255, 140, 0).bold("  AI & Config"));
-  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
+  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("/provider")}        Switch AI provider & add API key`);
   console.log(`  ${chalk.cyan("/revoke")}          Revoke a saved API key`);
   console.log(`  ${chalk.cyan("/models")}          Browse and select a model`);
   console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
   console.log(`  ${chalk.cyan("/status")}          Show current provider & model`);
-  console.log(`  ${chalk.cyan("/usage")}           Show token usage & estimated cost`);
+  console.log(`  ${chalk.cyan("/usage")}           Usage dashboard, context & telemetry`);
   console.log(`  ${chalk.cyan("/verbose")}         Toggle verbose/streaming mode`);
   console.log(`  ${chalk.cyan("/clear")}           Reset conversation history`);
   console.log();
   console.log(chalk.rgb(255, 140, 0).bold("  History & Export"));
-  console.log(chalk.gray("  ──────────────────────────────────────────────────❯"));
+  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
   console.log(`  ${chalk.cyan("/history")}         List previous conversations`);
   console.log(`  ${chalk.cyan("/history <n>")}     Preview a conversation`);
   console.log(`  ${chalk.cyan("/load <n>")}        Restore a previous conversation`);
