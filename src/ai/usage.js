@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -112,21 +112,16 @@ const PRICING = {
   "mistralai/devstral-2": [0.40, 2.00],
 };
 
-try {
-  const pricingDataPath = new URL("../data/llm-pricing.json", import.meta.url);
-  if (existsSync(pricingDataPath)) {
-    const rawData = readFileSync(pricingDataPath, "utf8");
-    const litellm = JSON.parse(rawData);
-    for (const [key, info] of Object.entries(litellm)) {
-      if (key === "sample_spec" || typeof info !== "object" || !info) continue;
-      const inCost = (Number(info.input_cost_per_token) || 0) * 1_048_576;
-      const outCost = (Number(info.output_cost_per_token) || 0) * 1_048_576;
-      if (inCost >= 0 && outCost >= 0 && (inCost > 0 || outCost > 0)) {
-        PRICING[key] = [inCost, outCost];
-      }
-    }
+import { getSyncedPricing } from "../data/pricing-sync.js";
+
+const litellm = getSyncedPricing();
+for (const [key, info] of Object.entries(litellm)) {
+  if (key === "sample_spec" || typeof info !== "object" || !info) continue;
+  const inCost = (Number(info.input_cost_per_token) || 0) * 1_048_576;
+  const outCost = (Number(info.output_cost_per_token) || 0) * 1_048_576;
+  if (inCost >= 0 && outCost >= 0 && (inCost > 0 || outCost > 0)) {
+    PRICING[key] = [inCost, outCost];
   }
-} catch (err) {
 }
 
 /**

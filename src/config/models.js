@@ -88,38 +88,37 @@ function saveCache(cache) {
   writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), { encoding: "utf8", mode: 0o600 });
 }
 
+import { getSyncedPricing } from "../data/pricing-sync.js";
+
 function getModelsFromPricingJson(provider) {
   try {
-    const pricingDataPath = new URL("../data/llm-pricing.json", import.meta.url);
-    if (existsSync(pricingDataPath)) {
-      const rawData = readFileSync(pricingDataPath, "utf8");
-      const PRICING = JSON.parse(rawData);
-      const prefix = `${provider}/`;
+    const PRICING = getSyncedPricing();
+    if (!PRICING || Object.keys(PRICING).length === 0) return [];
+    
+    const prefix = `${provider}/`;
+    const models = [];
+    const seen = new Set();
 
-      const models = [];
-      const seen = new Set();
+    for (const [key, info] of Object.entries(PRICING)) {
+      if (!info || typeof info !== "object") continue;
 
-      for (const [key, info] of Object.entries(PRICING)) {
-        if (!info || typeof info !== "object") continue;
+      const isOfficialProvider = info.litellm_provider === provider || key.startsWith(prefix);
 
-        const isOfficialProvider = info.litellm_provider === provider || key.startsWith(prefix);
+      if (isOfficialProvider) {
+        let id = key.startsWith(prefix) ? key.slice(prefix.length) : key;
 
-        if (isOfficialProvider) {
-          let id = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+        if (provider === "openai") {
+          const validPrefix = /^(gpt-|o1|o3|o4|chatgpt-)/.test(id);
+          if (!validPrefix) continue;
+        }
 
-          if (provider === "openai") {
-            const validPrefix = /^(gpt-|o1|o3|o4|chatgpt-)/.test(id);
-            if (!validPrefix) continue;
-          }
-
-          if (!seen.has(id)) {
-            seen.add(id);
-            models.push({ id, name: id });
-          }
+        if (!seen.has(id)) {
+          seen.add(id);
+          models.push({ id, name: id });
         }
       }
-      return models.sort((a, b) => a.id.localeCompare(b.id));
     }
+    return models.sort((a, b) => a.id.localeCompare(b.id));
   } catch (err) { }
   return [];
 }
