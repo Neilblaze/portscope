@@ -1,8 +1,11 @@
 import { PROVIDER_DEFAULTS } from "./schema.js";
 import { sanitizeError } from "./sanitize-error.js";
+import { createHash } from "crypto";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "fs";
+import { join } from "path";
+import { homedir } from "os";
 
-// NOTE: Needs to be updated when new models are released
-// Or, maybe I should automate this? 🤔 ... nvm, will do later
+
 const CURATED_MODELS = {
   anthropic: [
     { id: "claude-haiku-4-5-20251001", name: "Claude Haiku 4.5" },
@@ -18,8 +21,6 @@ const CURATED_MODELS = {
     { id: "gpt-4.1-nano", name: "GPT-4.1 Nano" },
     { id: "gpt-4o-mini", name: "GPT-4o Mini" },
     { id: "gpt-4o", name: "GPT-4o" },
-    { id: "gpt-oss-120b", name: "GPT-OSS 120B" },
-    { id: "qwen3-235b-a22b-2507", name: "Qwen 3 235B" },
   ],
   cerebras: [
     { id: "llama-4-scout-17b-16e-instruct", name: "Llama 4 Scout 17B" },
@@ -55,24 +56,151 @@ const CURATED_MODELS = {
 };
 
 
+const curatedNames = {};
+for (const list of Object.values(CURATED_MODELS)) {
+  for (const m of list) curatedNames[m.id] = m.name;
+}
+
+const PORTSCOPE_HOME = join(homedir(), ".portscope");
+const CACHE_FILE = join(PORTSCOPE_HOME, "models-cache.json");
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 hours
+
+
+function getCacheKey(provider, apiKey) {
+  if (!apiKey || apiKey === "local") return `${provider}:local`;
+  const hash = createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
+  return `${provider}:${hash}`;
+}
+
+function loadCache() {
+  if (existsSync(CACHE_FILE)) {
+    try {
+      return JSON.parse(readFileSync(CACHE_FILE, "utf8"));
+    } catch { }
+  }
+  return {};
+}
+
+function saveCache(cache) {
+  if (!existsSync(PORTSCOPE_HOME)) {
+    mkdirSync(PORTSCOPE_HOME, { recursive: true, mode: 0o700 });
+  }
+  writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), { encoding: "utf8", mode: 0o600 });
+}
+
+function getModelsFromPricingJson(provider) {
+  try {
+    const pricingDataPath = new URL("../data/llm-pricing.json", import.meta.url);
+    if (existsSync(pricingDataPath)) {
+      const rawData = readFileSync(pricingDataPath, "utf8");
+      const PRICING = JSON.parse(rawData);
+      const prefix = `${provider}/`;
+
+      const models = [];
+      const seen = new Set();
+
+      for (const [key, info] of Object.entries(PRICING)) {
+        if (!info || typeof info !== "object") continue;
+
+        const isOfficialProvider = info.litellm_provider === provider || key.startsWith(prefix);
+
+        if (isOfficialProvider) {
+          let id = key.startsWith(prefix) ? key.slice(prefix.length) : key;
+
+          if (provider === "openai") {
+            const validPrefix = /^(gpt-|o1|o3|o4|chatgpt-)/.test(id);
+            if (!validPrefix) continue;
+          }
+
+          if (!seen.has(id)) {
+            seen.add(id);
+            models.push({ id, name: id });
+          }
+        }
+      }
+      return models.sort((a, b) => a.id.localeCompare(b.id));
+    }
+  } catch (err) { }
+  return [];
+}
+
+
+function isChatModel(provider, id) {
+  const lower = id.toLowerCase();
+
+  const ignored = [
+    "embedding", "tts", "whisper", "sora", "dalle", "dall-e", "audio", "realtime",
+    "moderation", "babbage", "davinci", "curie", "ada-",
+    "transcribe", "diarize", "search", "image"
+  ];
+  if (ignored.some(p => lower.includes(p))) return false;
+
+  if (provider === "openai" && lower.includes("instruct")) return false;
+
+  return true;
+}
+
+function cleanModelList(provider, models) {
+  let cleaned = models.filter(m => isChatModel(provider, m.id));
+
+  if (provider === "openai" || provider === "openrouter") {
+    if (provider === "openai") {
+      cleaned = cleaned.filter(m => /^(gpt-|o1|o3|o4|chatgpt-)/.test(m.id) && !m.id.includes("oss"));
+    }
+
+    const idSet = new Set(cleaned.map((m) => m.id));
+    cleaned = cleaned.filter((m) => {
+      const isDated = /-\d{4}-\d{2}-\d{2}$/.test(m.id) || /-\d{4}$/.test(m.id);
+      if (isDated) {
+        const base = m.id.replace(/-\d{4}-\d{2}-\d{2}$/, "").replace(/-\d{4}$/, "");
+        if (idSet.has(base)) return false;
+      }
+      return true;
+    });
+  }
+  return cleaned;
+}
+
 /**
- * Fetch available models for a provider.
- * For OpenRouter & NVIDIA NIM: hits their /models endpoint.
- * For Anthropic & OpenAI: returns a curated list.
- * Returns: { models: [{ id, name }], error: string|null }
+ * Ensures the given model is in the cache for the given provider/key.
+ * If not found, immediately triggers a background fetch to update the cache.
  */
-export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint) {
-  if (CURATED_MODELS[provider]) {
-    return { models: CURATED_MODELS[provider], error: null };
+export async function ensureModelDiscovered(provider, apiKey, model, ollamaEndpoint) {
+  if (!model || provider === "ollama") return;
+
+  const cacheKey = getCacheKey(provider, apiKey);
+  const cache = loadCache();
+
+  const entry = cache[cacheKey];
+  if (entry && entry.models) {
+    const found = entry.models.find(m => m.id === model || m.id.includes(model));
+    if (found) return;
   }
 
-  // Ollama uses /api/tags with a different response shape
+  await fetchAvailableModels(provider, apiKey, ollamaEndpoint, true);
+}
+
+/**
+ * Fetch available models for a provider.
+ * Uses a local cache with a 12-hour TTL.
+ * Returns: { models: [{ id, name }], error: string|null }
+ */
+export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint, forceRefresh = false) {
   if (provider === "ollama") {
     return fetchOllamaModels(ollamaEndpoint);
   }
 
+  const cacheKey = getCacheKey(provider, apiKey);
+  const cache = loadCache();
+  const now = Date.now();
+
+  if (!forceRefresh && cache[cacheKey] && (now - cache[cacheKey].updatedAt) < CACHE_TTL) {
+    const cleanedModels = cleanModelList(provider, cache[cacheKey].models);
+    return { models: cleanedModels, error: null };
+  }
+
   const defaults = PROVIDER_DEFAULTS[provider];
-  if (!defaults || !defaults.modelsUrl) {
+  if (!defaults) {
     return { models: [], error: `No model listing available for ${provider}` };
   }
 
@@ -81,43 +209,93 @@ export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint) {
   }
 
   try {
-    const headers = { Authorization: `Bearer ${apiKey}` };
-    if (provider === "openrouter") {
-      headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
-      headers["X-Title"] = "PortScope";
-    }
+    let models = [];
 
-    const res = await fetch(defaults.modelsUrl, { headers, signal: AbortSignal.timeout(15000) });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      if (res.status === 401 || res.status === 403) {
-        return { models: [], error: `Invalid API key for ${defaults.label}` };
+    if (!defaults.modelsUrl) {
+      models = getModelsFromPricingJson(provider);
+      if (models.length === 0) {
+        return { models: [], error: `No models found for ${provider} in local database.` };
       }
-      return { models: [], error: `${defaults.label} API error (${res.status}): ${errText.slice(0, 200)}` };
-    }
+    } else {
+      let finalUrl = defaults.modelsUrl;
+      const headers = {};
 
-    const data = await res.json();
-    const models = (data.data || [])
-      .filter((m) => m.id)
-      .map((m) => ({
-        id: m.id,
-        name: m.name || m.id,
-      }))
-      .sort((a, b) => a.id.localeCompare(b.id));
+      if (provider === "gemini") {
+        finalUrl = `${defaults.modelsUrl}?key=${apiKey}`;
+      } else {
+        headers.Authorization = `Bearer ${apiKey}`;
+        if (provider === "openrouter") {
+          headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
+          headers["X-Title"] = "PortScope";
+        }
+      }
+
+      const res = await fetch(finalUrl, { headers, signal: AbortSignal.timeout(15000) });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        if (res.status === 401 || res.status === 403 || res.status === 400) {
+          return { models: [], error: `Invalid API key for ${defaults.label}` };
+        }
+
+        // NOTE: Fallback to local db (if API fails)
+        models = getModelsFromPricingJson(provider);
+        if (models.length > 0) {
+          return { models, error: null };
+        }
+        return { models: [], error: `${defaults.label} API error (${res.status}): ${errText.slice(0, 200)}` };
+      }
+
+      const data = await res.json();
+      const rawModels = data.data || data.models || [];
+
+      models = rawModels
+        .map((m) => {
+          let id = m.id || m.name;
+          if (provider === "gemini" && id && id.startsWith("models/")) {
+            id = id.replace("models/", "");
+          }
+          return {
+            id,
+            name: curatedNames[id] || m.name || id,
+          };
+        })
+        .filter((m) => m.id && isChatModel(provider, m.id))
+        .sort((a, b) => a.id.localeCompare(b.id));
+
+      models = cleanModelList(provider, models);
+
+      if (CURATED_MODELS[provider]) {
+        const fetchedIds = new Set(models.map(m => m.id));
+        const missingCurated = CURATED_MODELS[provider].filter(m => !fetchedIds.has(m.id));
+        models = [...missingCurated, ...models];
+      }
+    }
 
     if (models.length === 0) {
       return { models: [], error: `No models returned by ${defaults.label}` };
     }
+
+    cache[cacheKey] = {
+      updatedAt: now,
+      models,
+    };
+    saveCache(cache);
 
     return { models, error: null };
   } catch (err) {
     if (err.name === "TimeoutError") {
       return { models: [], error: `Timed out connecting to ${defaults.label}` };
     }
+
+    const fallbackModels = getModelsFromPricingJson(provider);
+    if (fallbackModels.length > 0) {
+      return { models: fallbackModels, error: null };
+    }
     return { models: [], error: `Failed to fetch models: ${sanitizeError(err)}` };
   }
 }
+
 
 
 async function fetchOllamaModels(ollamaEndpoint) {

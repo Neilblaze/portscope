@@ -28,7 +28,7 @@ export function printStatus(state) {
   const provider = PROVIDER_DEFAULTS[state.config.ai.provider];
   console.log();
   console.log(chalk.cyan.bold("  Current Configuration"));
-  console.log(chalk.gray("  ─────────────────────────────────"));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
   console.log(`  ${chalk.gray("Provider")}    ${chalk.white.bold(provider?.label || state.config.ai.provider)}`);
   console.log(`  ${chalk.gray("Model")}       ${chalk.white.bold(state.config.ai.model || "not set")}`);
   if (state.apiKey && state.apiKey !== "local") {
@@ -47,7 +47,7 @@ export async function switchProvider(state, rl, messages = []) {
   if (messages.length > 0) {
     console.log();
     console.log(chalk.yellow("  ⚠ Warning: Switching providers will reset conversation history"));
-    console.log(chalk.dim("  Your current conversation will be lost unless you export it first."));
+    console.log(chalk.dim("    Your current conversation will be lost unless you export it first."));
     console.log();
     const confirm = await question(rl, chalk.yellow("  Continue? [y/N] "));
     if (confirm.trim().toLowerCase() !== "y") {
@@ -58,7 +58,7 @@ export async function switchProvider(state, rl, messages = []) {
 
   console.log();
   console.log(chalk.cyan.bold("  Select a Provider"));
-  console.log(chalk.gray("  ─────────────────────────────────"));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
 
   for (let i = 0; i < PROVIDER_IDS.length; i++) {
     const id = PROVIDER_IDS[i];
@@ -111,21 +111,21 @@ export async function switchProvider(state, rl, messages = []) {
       const res = await fetch(tagsUrl, { signal: AbortSignal.timeout(5000) });
       process.stdout.write("\r" + " ".repeat(60) + "\r");
       if (!res.ok) {
-        console.log(chalk.red(`  ✕ Ollama at ${endpoint} returned ${res.status}`));
+        console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`Ollama at ${endpoint} returned ${res.status}`)}`);
         return;
       }
     } catch (err) {
       process.stdout.write("\r" + " ".repeat(60) + "\r");
       if (err.cause?.code === "ECONNREFUSED" || err.name === "TimeoutError") {
-        console.log(chalk.red(`  ✕ Cannot connect to Ollama at ${endpoint}`));
+        console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`Cannot connect to Ollama at ${endpoint}`)}`);
       } else {
-        console.log(chalk.red(`  ✕ ${sanitizeError(err)}`));
+        console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(sanitizeError(err))}`);
       }
       console.log(chalk.gray("  Make sure Ollama is running: ollama serve\n"));
       return;
     }
 
-    console.log(chalk.green(`  ✔ Ollama is running at ${endpoint}`));
+    console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Ollama is running at ${endpoint}`)}`);
     state.config.ai.ollamaEndpoint = endpoint;
     apiKey = "local";
   } else if (!apiKey) {
@@ -146,20 +146,20 @@ export async function switchProvider(state, rl, messages = []) {
     process.stdout.write("\r" + " ".repeat(40) + "\r");
 
     if (!valid) {
-      console.log(chalk.red(`  ✕ ${error || "Invalid API key"}\n`));
+      console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`${error || "Invalid API key"}\n`)}`);
       return;
     }
 
-    console.log(chalk.green("  ✔ API key validated!"));
-    console.log(chalk.dim(`  Key: ${maskApiKey(key.trim())}`));
+    console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green("API key validated!")}`);
+    console.log(chalk.dim(`      Key: ${maskApiKey(key.trim())}`));
 
     saveApiKey(provider, key.trim());
     apiKey = key.trim();
-    console.log(chalk.gray(`  Saved to ~/.portscope/.env\n`));
+    console.log(chalk.gray(`      Saved to ~/.portscope/.env\n`));
   } else {
     console.log();
-    console.log(chalk.green(`  ✔ API key already configured for ${defaults.label}`));
-    console.log(chalk.dim(`  Key: ${maskApiKey(apiKey)}`));
+    console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`API key already configured for ${chalk.bold(defaults.label)}`)}`);
+    console.log(chalk.dim(`      Key: ${maskApiKey(apiKey)}`));
     console.log();
   }
 
@@ -172,15 +172,17 @@ export async function switchProvider(state, rl, messages = []) {
   if (messages.length > 0) {
     messages.length = 0;
     resetUsage();
-    console.log(chalk.dim("  Conversation history cleared."));
+    console.log(`  ${chalk.gray("🗑️")} ${chalk.dim("Conversation history cleared.")}`);
+    console.log();
   }
 
   console.log(
-    chalk.green(`  ✔ Switched to ${chalk.bold(defaults.label)}`) +
+    `  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Switched to ${chalk.bold(defaults.label)}`)}` +
     (defaults.model ? chalk.gray(` (${defaults.model})`) : ""),
   );
 
   if (defaults.modelsUrl) {
+    console.log();
     const browse = await question(rl, chalk.yellow("  Browse available models? [y/N] "));
     if (browse.toLowerCase() === "y") {
       await browseModels(state, rl);
@@ -207,7 +209,7 @@ export async function revokeApiKeyFlow(state, rl) {
 
   console.log();
   console.log(chalk.cyan.bold("  Revoke an API Key"));
-  console.log(chalk.gray("  ─────────────────────────────────"));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
 
   for (let i = 0; i < configuredProviders.length; i++) {
     const id = configuredProviders[i];
@@ -235,7 +237,7 @@ export async function revokeApiKeyFlow(state, rl) {
   }
 
   revokeApiKey(providerToRevoke);
-  console.log(chalk.green(`  ✔ Revoked API key for ${defaults.label}\n`));
+  console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Revoked API key for ${defaults.label}\n`)}`);
 
   if (state.config.ai.provider === providerToRevoke) {
     state.apiKey = null;
@@ -264,7 +266,7 @@ export async function browseModels(state, rl) {
   process.stdout.write("\r" + " ".repeat(40) + "\r");
 
   if (error) {
-    console.log(chalk.red(`  ✕ ${error}\n`));
+    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`${error}\n`)}`);
     return;
   }
 
@@ -277,7 +279,7 @@ export async function browseModels(state, rl) {
   const totalPages = Math.ceil(models.length / pageSize);
 
   console.log(chalk.cyan.bold(`\n  Available Models (${models.length})`));
-  console.log(chalk.gray("  ─────────────────────────────────"));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
 
   const displayPage = (page) => {
     const start = page * pageSize;
@@ -296,48 +298,60 @@ export async function browseModels(state, rl) {
   displayPage(0);
   console.log();
 
-  const input = await question(rl, chalk.yellow("  Enter model number, name, or 'n' for next page: "));
-  const trimmed = input.trim();
+  const isCancel = (val) => {
+    const l = val.toLowerCase();
+    return !l || l === "exit" || l === "quit" || l === "cancel" || l === "0";
+  };
 
-  if (!trimmed) {
-    console.log();
-    return;
-  }
-
-  if (trimmed.toLowerCase() === "n" && totalPages > 1) {
-    for (let p = 1; p < totalPages; p++) {
-      displayPage(p);
+  const matchModel = (input) => {
+    const num = parseInt(input, 10);
+    if (!isNaN(num) && num >= 1 && num <= models.length) {
+      return models[num - 1];
     }
-    console.log();
-    const pick = await question(rl, chalk.yellow("  Enter model number or name: "));
-    return selectModel(pick.trim(), models, state);
-  }
+    return models.find(
+      (m) => m.id === input || m.id.includes(input) || m.name.toLowerCase().includes(input.toLowerCase()),
+    );
+  };
 
-  return selectModel(trimmed, models, state);
-}
+  let attempts = 0;
+  let showingFirstPage = true;
 
-function selectModel(input, models, state) {
-  if (!input) return;
+  while (attempts < 3) {
+    const promptText = (showingFirstPage && totalPages > 1)
+      ? "  Enter model number, name, or 'n' for next page: "
+      : "  Enter model number or name, or press '0' to cancel: ";
 
-  const num = parseInt(input, 10);
-  if (!isNaN(num) && num >= 1 && num <= models.length) {
-    state.config.ai.model = models[num - 1].id;
-    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
-    console.log(chalk.green(`  ✔ Model set to ${chalk.bold(state.config.ai.model)}\n`));
-    return;
-  }
+    const input = await question(rl, chalk.yellow(promptText));
+    const trimmed = input.trim();
 
-  const match = models.find(
-    (m) => m.id === input || m.id.includes(input) || m.name.toLowerCase().includes(input.toLowerCase()),
-  );
-  if (match) {
-    state.config.ai.model = match.id;
-    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
-    console.log(chalk.green(`  ✔ Model set to ${chalk.bold(state.config.ai.model)}\n`));
-  } else {
-    state.config.ai.model = input;
-    persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
-    console.log(chalk.yellow(`  Model set to "${input}" (not in list — may still work)\n`));
+    if (isCancel(trimmed)) {
+      console.log(chalk.gray("  Cancelled.\n"));
+      return;
+    }
+
+    if (showingFirstPage && trimmed.toLowerCase() === "n" && totalPages > 1) {
+      for (let p = 1; p < totalPages; p++) {
+        displayPage(p);
+      }
+      console.log();
+      showingFirstPage = false;
+      continue;
+    }
+
+    const match = matchModel(trimmed);
+    if (match) {
+      state.config.ai.model = match.id;
+      persistProviderChoice(state.config.ai.provider, state.config.ai.model, state.config.ai.provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
+      console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Model set to ${chalk.bold(state.config.ai.model)}\n`)}`);
+      return;
+    }
+
+    attempts++;
+    if (attempts >= 3) {
+      console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red("Too many invalid attempts. Cancelled.\n")}`);
+      return;
+    }
+    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`Model "${trimmed}" not found. Please pick from the list.`)}`);
   }
 }
 

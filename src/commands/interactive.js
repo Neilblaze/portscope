@@ -1,5 +1,4 @@
 import chalk from "chalk";
-// import { createInterface } from "readline";
 import { loadConfig, getApiKey } from "../config/loader.js";
 import { listCommand } from "./list.js";
 import { inspectCommand } from "./inspect.js";
@@ -15,7 +14,7 @@ import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "..
 import { classifyIntent } from "../ai/intent.js";
 import { createGhostTextInterface, setPortCache } from "../ui/ghost-text.js";
 import { getListeningPorts } from "../scanner/ports.js";
-import { sanitizeError } from "../config/sanitize-error.js";
+import { formatChatError } from "../config/sanitize-error.js";
 import { restartCommand } from "./restart.js";
 
 
@@ -59,24 +58,24 @@ export async function interactiveMode(showAll, verbose = false) {
   const state = { config, apiKey, verbose };
   state.conversationId = generateConversationId();
 
-  console.log(chalk.gray("  ╭─────────────────────────────────────────────────────────────────────────────●"));
+  console.log(chalk.gray(" ╭─────────────────────────────────────────────────────────────────────────────●"));
   if (apiKey) {
     console.log(
-      chalk.gray("  ╰─") +
+      chalk.gray(" ╰─") +
       chalk.dim("💡 Ask anything — ") +
       chalk.dim.italic("\"what's hogging port 3000?\"") +
       chalk.dim(", or use a direct command below."),
     );
   } else {
     console.log(
-      chalk.gray("  ╰─") +
+      chalk.gray(" ╰─") +
       chalk.dim("💡 Use direct commands below, or ") +
       chalk.cyan("/provider") +
       chalk.dim(" to enable AI natural language."),
     );
   }
   console.log(
-    chalk.dim("      ") +
+    chalk.dim("     ") +
     chalk.blue(" kill <port>") + chalk.dim(" · ") +
     chalk.blue("pause <port>") + chalk.dim(" · ") +
     chalk.blue("resume <port>") + chalk.dim(" · ") +
@@ -85,7 +84,7 @@ export async function interactiveMode(showAll, verbose = false) {
     chalk.blue("clean")
   );
   console.log(
-    chalk.dim("      ") +
+    chalk.dim("     ") +
     chalk.blue(" logs <port>") + chalk.dim(" · ") +
     chalk.blue("watch") + chalk.dim(" · ") +
     chalk.blue("<port>") + chalk.dim(" (inspect) · ") +
@@ -228,7 +227,7 @@ export async function interactiveMode(showAll, verbose = false) {
           saveConversation(state.conversationId, state.config, messages);
         } catch (err) {
           messages.pop();
-          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+          console.log(formatChatError(err));
         }
       } finally {
         isExecuting = false;
@@ -287,7 +286,7 @@ async function handleDirectCommand(input, rl) {
     try {
       await inspectCommand(portNum);
     } catch (err) {
-      console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+      console.log(formatChatError(err));
     }
     return true;
   }
@@ -300,7 +299,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await killCommand(parts, rl);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -309,7 +308,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await psCommand(parts.includes("--all") || parts.includes("-a"), false);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -317,7 +316,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await cleanCommand(rl);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -325,7 +324,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await logsCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -336,7 +335,7 @@ async function handleDirectCommand(input, rl) {
         try {
           await watchCommand(parts, rl);
         } catch (err) {
-          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+          console.log(formatChatError(err));
         }
       }
       return true;
@@ -345,7 +344,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await pauseCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -353,7 +352,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await resumeCommand(parts);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -365,7 +364,7 @@ async function handleDirectCommand(input, rl) {
       try {
         await restartCommand(parts, rl);
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -374,7 +373,7 @@ async function handleDirectCommand(input, rl) {
         try {
           await inspectCommand(parseInt(parts[1], 10));
         } catch (err) {
-          console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+          console.log(formatChatError(err));
         }
       } else {
         console.log(chalk.gray("  Usage: inspect <port>"));
@@ -393,7 +392,7 @@ async function handleDirectCommand(input, rl) {
           setPortCache(ports);
         } catch { /* non-critical */ }
       } catch (err) {
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
       return true;
 
@@ -442,10 +441,10 @@ async function animateSlashCommand(promptPrefix, input) {
     "/clear": "yellow", "/revoke": "yellow",
     "/verbose": "green", "/status": "green", "/usage": "green"
   };
-  
+
   const baseColor = colorMap[cmd] || "cyan";
   const brightColor = baseColor + "Bright";
-  
+
   const frames = [
     chalk[baseColor],
     chalk[brightColor],

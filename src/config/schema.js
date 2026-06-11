@@ -24,14 +24,14 @@ export const PROVIDER_DEFAULTS = {
     model: "gpt-5-nano",
     envKey: "OPENAI_API_KEY",
     baseUrl: "https://api.openai.com/v1/chat/completions",
-    modelsUrl: null,
+    modelsUrl: "https://api.openai.com/v1/models",
     label: "OpenAI",
   },
   gemini: {
     model: "gemini-2.5-flash",
     envKey: "GEMINI_API_KEY",
     baseUrl: "https://generativelanguage.googleapis.com/v1beta",
-    modelsUrl: null,
+    modelsUrl: "https://generativelanguage.googleapis.com/v1beta/models",
     label: "Google Gemini",
   },
   openrouter: {

@@ -2,6 +2,24 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.3] - 2026-06-11
+
+### Added
+- **Dependabot Automation** — Configured `.github/dependabot.yml` for weekly ecosystem package updates and automatic PR generation for both the core CLI tool and the React website.
+- **Website CI Checks** — Added a `test-website` job to `.github/workflows/pr-checks.yml` that automatically lints and builds the React website on every pull request.
+- **Explicit Cancellation Option** — Added a `0` (Exit/Cancel) option to the model selection prompt in interactive mode, allowing users to back out gracefully without selecting a model.
+- **Dynamic Pricing Auto-Sync** — Added a GitHub Action (`sync-pricing.yml`) that runs every 12 hours to fetch and synchronize the latest LLM pricing data (`llm-pricing.json`) from the LiteLLM dataset, ensuring token cost estimates are always up to date.
+
+### Changed
+- **PNPM CI Migration** — Fully migrated GitHub Actions pipelines (`pr-checks.yml`, `coverage.yml`, `deploy-website.yml`, `release.yml`) from `npm` to `pnpm` using native cache configuration for significantly faster builds.
+- **Model Discovery Strict Filtering** — Overhauled the model fetching logic (`src/config/models.js`) with a strict `cleanModelList` sanitizer. Actively filters out non-chat capabilities (e.g., `transcribe`, `tts`, `diarize`, `search`, `image`, and experimental `oss` variants) ensuring only relevant conversational models are displayed in the CLI. Added `modelsUrl` to `schema.js` for OpenAI and Gemini for dynamic discovery.
+- **Advanced Pricing Resolution** — Rewrote cost estimation logic in `src/ai/usage.js` to ingest the dynamically synced `src/data/llm-pricing.json`. Replaced basic fallback mapping with an intelligent `getRates()` resolver that automatically accounts for provider prefixes and model variations.
+- **UI Aesthetics & Alignment** — Upgraded the provider-flow prompts to use rich `chalk.bgGreen` (`✔`) and `chalk.bgRed` (`✕`) block icons for action feedback. Fixed terminal spacing and alignment for API key outputs. Adjusted ASCII banner spacing.
+- **Test Coverage & Error Styling** — Expanded native Node.js test suite with robust UI formatting (`src/ui/format.js`) and error sanitation (`src/config/sanitize-error.js`) coverage. Replaced basic `sanitizeError` globally with styled `formatChatError`. Reached 296 total tests with 100% test coverage in targeted files, pushing overall line coverage past 50.90%.
+
+### Fixed
+- **Documentation Links** — Fixed malformed paths to the `CONTRIBUTING.md` and `AI_USAGE_POLICY.md` files across `README.md` and `CODE_OF_CONDUCT.md`.
+
 ## [1.8.2] - 2026-06-09
 
 ### Added

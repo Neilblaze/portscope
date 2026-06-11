@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert";
-import { sanitizeError, sanitizeErrorObject } from "../src/config/sanitize-error.js";
+import { sanitizeError, sanitizeErrorObject, formatChatError } from "../src/config/sanitize-error.js";
 
 describe("sanitizeError", () => {
   it("should redact API keys with sk- prefix", () => {
@@ -149,5 +149,51 @@ describe("sanitizeErrorObject", () => {
   it("should handle null error", () => {
     const sanitized = sanitizeErrorObject(null);
     assert.strictEqual(sanitized, null);
+  });
+});
+
+describe("formatChatError", () => {
+  it("formats invalid model errors", () => {
+    const err = new Error("Model does not exist");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Invalid Model"));
+    assert.ok(result.includes("Model does not exist"));
+  });
+
+  it("formats auth failed errors", () => {
+    const err = new Error("Incorrect API key provided");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Auth Failed"));
+    assert.ok(result.includes("Incorrect API key provided"));
+  });
+
+  it("formats provider down errors", () => {
+    const err = new Error("Server returned 502 Bad Gateway");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Provider Down"));
+  });
+
+  it("formats timeout errors", () => {
+    const err = new Error("Request timed out");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Timeout"));
+  });
+
+  it("formats offline errors", () => {
+    const err = new Error("ECONNREFUSED 127.0.0.1:11434");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Offline"));
+  });
+
+  it("formats rate limit errors", () => {
+    const err = new Error("Rate limit exceeded 429");
+    const result = formatChatError(err);
+    assert.ok(result.includes("Rate Limited"));
+  });
+
+  it("formats generic API errors", () => {
+    const err = new Error("Some weird unexpected error");
+    const result = formatChatError(err);
+    assert.ok(result.includes("API Error"));
   });
 });

@@ -1,7 +1,10 @@
 import { PROVIDER_DEFAULTS } from "../config/schema.js";
 import { stripNulls } from "./context.js";
+import { ensureModelDiscovered } from "../config/models.js";
 
 export async function sendMessage(config, apiKey, messages, tools, systemPrompt) {
+  await ensureModelDiscovered(config.ai.provider, apiKey, config.ai.model, config.ai.ollamaEndpoint).catch(() => { });
+
   let attempt = 0;
   const maxAttempts = 2;
 
@@ -203,17 +206,30 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     let err = await res.text();
     // Strip HTML tags (NVIDIA NIM returns raw HTML on 502)
     err = err.replace(/<[^>]*>/g, "").trim();
-    if (!err) err = `HTTP ${res.status}`;
+
+    let parsedErr = err;
+    try {
+      const j = JSON.parse(err);
+      if (j.error && j.error.message) parsedErr = j.error.message;
+    } catch { }
+
+    if (!parsedErr) parsedErr = `HTTP ${res.status}`;
+
     if (res.status === 502 || res.status === 503) {
       throw new Error(
         `${config.ai.provider} is temporarily unavailable (${res.status}). ` +
         `The model "${config.ai.model}" may be down — try again in a moment, or switch models with /models.`,
       );
     }
-    if (res.status === 401 || err.toLowerCase().includes("invalid_api_key")) {
+
+    if (res.status === 404 && parsedErr.toLowerCase().includes("does not exist")) {
+      throw new Error(`The model "${config.ai.model}" does not exist or your API key doesn't have access to it. Use /models to pick a valid model.`);
+    }
+
+    if (res.status === 401 || parsedErr.toLowerCase().includes("invalid_api_key") || parsedErr.toLowerCase().includes("incorrect api key")) {
       throw new Error(`Invalid ${config.ai.provider} API key. Check your ${config.ai.provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
     }
-    throw new Error(`${config.ai.provider} API error (${res.status}): ${err}`);
+    throw new Error(`${config.ai.provider} API error (${res.status}): ${parsedErr}`);
   }
 
   const data = await res.json();
@@ -655,7 +671,20 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`${config.ai.provider} streaming error (${res.status}): ${err}`);
+    let parsedErr = err;
+    try {
+      const j = JSON.parse(err);
+      if (j.error && j.error.message) parsedErr = j.error.message;
+    } catch { }
+
+    if (res.status === 404 && parsedErr.toLowerCase().includes("does not exist")) {
+      throw new Error(`The model "${config.ai.model}" does not exist or your API key doesn't have access to it. Use /models to pick a valid model.`);
+    }
+    if (res.status === 401 || parsedErr.toLowerCase().includes("invalid_api_key") || parsedErr.toLowerCase().includes("incorrect api key")) {
+      throw new Error(`Invalid ${config.ai.provider} API key. Check your ${config.ai.provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
+    }
+
+    throw new Error(`${config.ai.provider} streaming error (${res.status}): ${parsedErr}`);
   }
 
   const result = { text: "", toolCalls: [], usage: null, stopReason: "stop" };
@@ -729,6 +758,9 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
  */
 export async function sendMessageStream(config, apiKey, messages, tools, systemPrompt, onChunk) {
   const provider = config.ai.provider;
+
+  await ensureModelDiscovered(config.ai.provider, apiKey, config.ai.model, config.ai.ollamaEndpoint).catch(() => { });
+
   try {
     switch (provider) {
       case "anthropic":
@@ -747,7 +779,10 @@ export async function sendMessageStream(config, apiKey, messages, tools, systemP
         // Gemini, Ollama: fall back to non-streaming
         return await sendMessage(config, apiKey, messages, tools, systemPrompt);
     }
-  } catch {
+  } catch (err) {
+    if (err.message.includes("API error") || err.message.includes("does not exist") || err.message.includes("Invalid ") || err.message.includes("temporarily unavailable") || err.message.includes("streaming error")) {
+      throw err;
+    }
     return await sendMessage(config, apiKey, messages, tools, systemPrompt);
   }
 }

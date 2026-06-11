@@ -14,11 +14,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
 
-      - run: npm ci
+      - run: pnpm install
 
       - run: node src/index.js --help
 
@@ -31,4 +36,30 @@ jobs:
       - run: node --check src/ai/executor.js
       - run: node --check src/ai/tools.js
 
-      - run: npm test
+      - run: pnpm test
+
+  test-website:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        working-directory: ./website
+        run: pnpm install
+
+      - name: Lint website
+        working-directory: ./website
+        run: pnpm run lint
+
+      - name: Build website
+        working-directory: ./website
+        run: pnpm run build

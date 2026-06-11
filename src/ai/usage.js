@@ -72,8 +72,8 @@ function saveMetrics() {
 
 
 
-// Approximate pricing per 1M tokens [input, output] in USD : 28th April, 2026
-// TASK (WIP): Will try to write a helper function that programmatically retrieves this from the web
+// Approximate pricing per 1M tokens [input, output] in USD
+// Falls back to these hardcoded values if the synced pricing file is unavailable.
 const PRICING = {
   "claude-haiku-4-5": [1.00, 5.00],
   "claude-haiku-4-5-20251001": [1.00, 5.00],
@@ -112,6 +112,22 @@ const PRICING = {
   "mistralai/devstral-2": [0.40, 2.00],
 };
 
+try {
+  const pricingDataPath = new URL("../data/llm-pricing.json", import.meta.url);
+  if (existsSync(pricingDataPath)) {
+    const rawData = readFileSync(pricingDataPath, "utf8");
+    const litellm = JSON.parse(rawData);
+    for (const [key, info] of Object.entries(litellm)) {
+      if (key === "sample_spec" || typeof info !== "object" || !info) continue;
+      const inCost = (Number(info.input_cost_per_token) || 0) * 1_048_576;
+      const outCost = (Number(info.output_cost_per_token) || 0) * 1_048_576;
+      if (inCost >= 0 && outCost >= 0 && (inCost > 0 || outCost > 0)) {
+        PRICING[key] = [inCost, outCost];
+      }
+    }
+  }
+} catch (err) {
+}
 
 /**
  * Record token usage from an API response.
@@ -177,20 +193,62 @@ export function getCallHistory() {
 
 
 /**
+ * Resolves pricing rates for a given model, accounting for provider prefixes and region variations.
+ * @param {string} model
+ * @returns {[number, number]|null}
+ */
+function getRates(model) {
+  if (!model) return null;
+
+  if (currentProvider) {
+    const providerModel = `${currentProvider}/${model}`;
+    if (PRICING[providerModel]) return PRICING[providerModel];
+  }
+
+  if (PRICING[model]) return PRICING[model];
+
+  const keys = Object.keys(PRICING);
+
+  const findBest = (condition) => {
+    const matches = keys.filter(condition);
+    if (matches.length === 0) return null;
+    matches.sort((a, b) => a.length - b.length);
+    return matches[0];
+  };
+
+  let match = null;
+
+  if (currentProvider) {
+    match = findBest(k => k.includes(currentProvider) && k.includes(model));
+    if (match) return PRICING[match];
+  }
+
+  match = findBest((k) => k.endsWith(`/${model}`));
+  if (match) return PRICING[match];
+
+  match = findBest((k) => k.includes(model));
+  if (match) return PRICING[match];
+
+  const prefixMatches = keys.filter((k) => model.startsWith(k));
+  if (prefixMatches.length > 0) {
+    prefixMatches.sort((a, b) => b.length - a.length);
+    return PRICING[prefixMatches[0]];
+  }
+
+  return null;
+}
+
+/**
  * Estimate cost for the current session.
  * @param {string} model
  * @returns {string|null}
  */
 function estimateCost(model) {
-  let rates = PRICING[model];
-  if (!rates) {
-    const key = Object.keys(PRICING).find((k) => model.startsWith(k));
-    if (key) rates = PRICING[key];
-  }
+  const rates = getRates(model);
   if (!rates) return null;
 
-  const inputCost = (session.inputTokens / 1_000_000) * rates[0];
-  const outputCost = (session.outputTokens / 1_000_000) * rates[1];
+  const inputCost = (session.inputTokens / 1_048_576) * rates[0];
+  const outputCost = (session.outputTokens / 1_048_576) * rates[1];
   const total = inputCost + outputCost;
   return `$${total.toFixed(4)}`;
 }
@@ -201,14 +259,10 @@ function estimateCost(model) {
  * @returns {number|null}
  */
 function estimateCostRaw(model) {
-  let rates = PRICING[model];
-  if (!rates) {
-    const key = Object.keys(PRICING).find((k) => model.startsWith(k));
-    if (key) rates = PRICING[key];
-  }
+  const rates = getRates(model);
   if (!rates) return null;
-  return (session.inputTokens / 1_000_000) * rates[0] +
-    (session.outputTokens / 1_000_000) * rates[1];
+  return (session.inputTokens / 1_048_576) * rates[0] +
+    (session.outputTokens / 1_048_576) * rates[1];
 }
 
 

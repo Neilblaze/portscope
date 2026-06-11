@@ -31,4 +31,4 @@ All reports will be reviewed promptly, and I will maintain the confidentiality a
 
 ## Contributions Note
 
-PortScope is fully open-source under the Apache-2.0 license. If you would like to contribute code or documentation, please refer to the [.docs/CONTRIBUTING.md](.docs/CONTRIBUTING.md) guide.
+PortScope is fully open-source under the Apache-2.0 license. If you would like to contribute code or documentation, please refer to the [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) guide.

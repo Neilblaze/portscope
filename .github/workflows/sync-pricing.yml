@@ -1,0 +1,35 @@
+name: Auto-Sync LLM Pricing Data
+
+on:
+  schedule:
+    - cron: "0 */12 * * *"  # Every 12 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch latest pricing data
+        run: |
+          mkdir -p src/data
+          curl -sL "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json" \
+            -o src/data/llm-pricing.json
+
+      - name: Check for changes
+        id: diff
+        run: |
+          git diff --quiet src/data/llm-pricing.json && echo "changed=false" >> "$GITHUB_OUTPUT" || echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Commit data update
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/data/llm-pricing.json
+          git commit -m "sync: update llm pricing data $(date -u +%Y-%m-%d)"
+          git push origin main

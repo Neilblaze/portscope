@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { generateConversationId, saveConversation } from "./history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "./image.js";
 import { createGhostTextInterface } from "../ui/ghost-text.js";
-import { sanitizeError } from "../config/sanitize-error.js";
+import { formatChatError } from "../config/sanitize-error.js";
 import { handleSlashCommand } from "./slash-commands.js";
 import { processConversation } from "./tool-loop.js";
 import { printChatHeader } from "./provider-flow.js";
@@ -78,7 +78,7 @@ export async function startChat(config, apiKey, verbose = false) {
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
         messages.pop();
-        console.log(chalk.red(`\n  Error: ${sanitizeError(err)}\n`));
+        console.log(formatChatError(err));
       }
 
       prompt();

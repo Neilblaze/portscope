@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.8.2-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.3-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -250,8 +250,8 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 | Provider | Default Model | Browse Models | Env Variable |
 |----------|--------------|:---:|--------------|
 | **Anthropic** | `claude-haiku-4-5` | curated list | `ANTHROPIC_API_KEY` |
-| **OpenAI** | `gpt-5-nano` | curated list | `OPENAI_API_KEY` |
-| **Google Gemini** | `gemini-2.5-flash` | curated list | `GEMINI_API_KEY` |
+| **OpenAI** | `gpt-5-nano` | ✔ live browse | `OPENAI_API_KEY` |
+| **Google Gemini** | `gemini-2.5-flash` | ✔ live browse | `GEMINI_API_KEY` |
 | **OpenRouter** | `qwen/qwen3.5-flash-02-23` | ✔ live browse | `OPENROUTER_API_KEY` |
 | **NVIDIA NIM** | `deepseek-ai/deepseek-v4-flash` | ✔ live browse | `NVIDIA_API_KEY` |
 | **Cerebras** | `llama-4-scout-17b-16e-instruct` | curated list | `CEREBRAS_API_KEY` |
@@ -273,10 +273,10 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 |---------|-------------|
 | `/provider` | Switch AI provider and configure API key |
 | `/revoke` | Revoke a saved API key |
-| `/models` | Browse and select a model (live listing for OpenRouter & NVIDIA NIM) |
+| `/models` | Browse and select a model (live listing for OpenAI, Gemini, OpenRouter & NVIDIA NIM) |
 | `/model <name>` | Set model directly |
 | `/status` | Show current provider, model, and key status |
-| `/usage` | Display token consumption and estimated session costs |
+| `/usage` | Display token consumption and dynamically estimated session costs |
 | `/history` | List saved conversation sessions |
 | `/load <n>` | Restore a previous conversation session |
 | `/export [md\|html\|txt]` | Export current conversation to file |
@@ -489,10 +489,10 @@ graph TB
 ```bash
 git clone https://github.com/neilblaze/portscope.git
 cd portscope
-npm install
-npm test                   # Run tests
-npm start                  # Run locally (interactive mode)
-npm run dev                # Same as npm start
+pnpm install
+pnpm test                  # Run tests
+pnpm start                 # Run locally (interactive mode)
+pnpm run dev               # Same as pnpm start
 node src/index.js --help   # See all commands
 ```
 
