@@ -216,6 +216,8 @@ export function createGhostTextInterface(options) {
 
   let currentSuggestion = null;
   let lastInput = "";
+  let lastSlashHighlight = null;
+  let slashRefreshScheduled = false;
 
   const originalWrite = rl._writeToOutput;
 
@@ -225,9 +227,36 @@ export function createGhostTextInterface(options) {
       currentSuggestion = null;
     }
 
-    originalWrite.call(this, stringToWrite);
-
     const line = rl.line || "";
+
+    // Some colourful aestheticness for slash commands :3
+    const prevHighlight = lastSlashHighlight;
+    let slashCmd = null;
+    const trimmedLine = line.trimStart();
+    if (trimmedLine.startsWith("/")) {
+      const token = trimmedLine.split(/\s+/)[0];
+      if (SLASH_COMMANDS.some((sc) => sc.name === token)) {
+        slashCmd = token;
+      }
+    }
+    lastSlashHighlight = slashCmd;
+
+    if (slashCmd && stringToWrite.includes(slashCmd)) {
+      originalWrite.call(
+        this,
+        stringToWrite.replace(slashCmd, chalk.yellow(slashCmd)),
+      );
+    } else {
+      originalWrite.call(this, stringToWrite);
+
+      if (slashCmd !== prevHighlight && !slashRefreshScheduled) {
+        slashRefreshScheduled = true;
+        setImmediate(() => {
+          slashRefreshScheduled = false;
+          if (!rl.closed) rl._refreshLine();
+        });
+      }
+    }
 
     if (!line || line.endsWith(" ")) {
       lastInput = line;

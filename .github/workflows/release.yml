@@ -36,7 +36,13 @@ jobs:
         id: extract_notes
         run: |
           VERSION=${GITHUB_REF_NAME#v}
-          awk "/^## \\[$VERSION\\]/{flag=1; next} /^## \\[/{if(flag) exit} flag" CHANGELOG.md > release_notes.md
+          echo "<div align=\"center\">" > release_notes.md
+          echo "  <img src=\"https://raw.githubusercontent.com/Neilblaze/portscope/main/website/src/assets/hero.png\" alt=\"PortScope Banner\" width=\"100%\">" >> release_notes.md
+          echo "</div>" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## What's new in PortScope v$VERSION" >> release_notes.md
+          echo "" >> release_notes.md
+          awk "/^## \\[$VERSION\\]/{flag=1; next} /^## \\[/{if(flag) exit} flag" CHANGELOG.md >> release_notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

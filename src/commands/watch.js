@@ -120,7 +120,12 @@ export async function watchCommand(args = [], rl = null) {
   }, 2000);
 
   await new Promise((resolve) => {
-    const sigintHandler = () => {
+    let fired = false;
+
+    const cleanup = () => {
+      if (fired) return;
+      fired = true;
+
       clearInterval(interval);
 
       for (const [, timerId] of pendingRestarts) {
@@ -131,10 +136,26 @@ export async function watchCommand(args = [], rl = null) {
       console.log(getWatchSeparator());
       console.log(`  ${chalk.red("■")} ${chalk.white.bold("Watch mode stopped")}`);
       console.log(chalk.dim("    Returned to interactive prompt.\n"));
-      process.off("SIGINT", sigintHandler);
+
+      process.off("SIGINT", onSigint);
+      process.stdin.removeListener("data", onStdinData);
+
       resolve();
     };
-    process.once("SIGINT", sigintHandler);
+    const onSigint = () => cleanup();
+    const onStdinData = (data) => {
+      // 0x03 = Ctrl+C (ETX)
+      if (data && data.length === 1 && data[0] === 0x03) {
+        cleanup();
+      }
+    };
+
+    process.once("SIGINT", onSigint);
+
+    if (process.stdin.isTTY && !process.stdin.isRaw) {
+      process.stdin.setRawMode(true);
+    }
+    process.stdin.on("data", onStdinData);
   });
 }
 

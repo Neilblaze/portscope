@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { listCommand } from "./commands/list.js";
+import { listCommand, listLiveCommand } from "./commands/list.js";
 import { inspectCommand } from "./commands/inspect.js";
 import { killCommand } from "./commands/kill.js";
 import { cleanCommand } from "./commands/clean.js";
@@ -51,6 +51,13 @@ async function main() {
       break;
     case "logs":
       await logsCommand(filteredArgs);
+      break;
+    case "list":
+      if (args.includes("--live")) {
+        await listLiveCommand(showAll);
+      } else {
+        await listCommand(showAll);
+      }
       break;
     case "watch":
       await watchCommand(filteredArgs);

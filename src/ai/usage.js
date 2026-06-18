@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { existsSync, mkdirSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 
@@ -409,6 +409,7 @@ export async function printUsage(state) {
 
     if (metricsStr.length > 0) {
       console.log(`  ${chalk.dim("└")} ` + metricsStr.join(chalk.dim(" · ")));
+      console.log();
     }
   } else {
     console.log();

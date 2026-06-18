@@ -2,7 +2,29 @@ import { PROVIDER_DEFAULTS } from "../config/schema.js";
 import { stripNulls } from "./context.js";
 import { ensureModelDiscovered } from "../config/models.js";
 
-export async function sendMessage(config, apiKey, messages, tools, systemPrompt) {
+function getSignal(options, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    const err = new Error("TimeoutError");
+    err.name = "TimeoutError";
+    controller.abort(err);
+  }, timeoutMs);
+
+  if (options && options.signal) {
+    if (options.signal.aborted) {
+      controller.abort(options.signal.reason);
+    } else {
+      options.signal.addEventListener("abort", () => {
+        controller.abort(options.signal.reason);
+      }, { once: true });
+    }
+  }
+
+  return { signal: controller.signal, cancel: () => clearTimeout(timeoutId) };
+}
+
+
+export async function sendMessage(config, apiKey, messages, tools, systemPrompt, options = {}) {
   await ensureModelDiscovered(config.ai.provider, apiKey, config.ai.model, config.ai.ollamaEndpoint).catch(() => { });
 
   let attempt = 0;
@@ -13,28 +35,28 @@ export async function sendMessage(config, apiKey, messages, tools, systemPrompt)
       const provider = config.ai.provider;
       switch (provider) {
         case "anthropic":
-          return await sendAnthropic(config, apiKey, messages, tools, systemPrompt);
+          return await sendAnthropic(config, apiKey, messages, tools, systemPrompt, options);
         case "openai":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, options);
         case "openrouter":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, options);
         case "nvidia":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, options);
         case "cerebras":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, options);
         case "groq":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, options);
         case "gemini":
-          return await sendGemini(config, apiKey, messages, tools, systemPrompt);
+          return await sendGemini(config, apiKey, messages, tools, systemPrompt, options);
         case "ollama":
-          return await sendOllama(config, messages, systemPrompt);
+          return await sendOllama(config, messages, systemPrompt, options);
         default:
           throw new Error(`Unknown AI provider: ${provider}`);
       }
     } catch (err) {
       attempt++;
       if (attempt >= maxAttempts) throw err;
-      // NOTE: Do not retry on authentication errors
+      if (err.name === "AbortError") throw err;
       if (err.message.includes("401") || err.message.includes("403") || err.message.toLowerCase().includes("key")) {
         throw err;
       }
@@ -47,19 +69,22 @@ export async function sendMessage(config, apiKey, messages, tools, systemPrompt)
 
 // ── Anthropic ──────────────────────────────────────────────────────────── ///
 
-async function sendAnthropic(config, apiKey, messages, tools, systemPrompt) {
+async function sendAnthropic(config, apiKey, messages, tools, systemPrompt, options = {}) {
   const body = {
     model: config.ai.model,
     max_tokens: config.ai.maxTokens,
     system: systemPrompt,
     messages: toAnthropicMessages(messages),
-    tools: tools.map((t) => ({
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools.map((t) => ({
       name: t.name,
       description: t.description,
       input_schema: t.parameters,
-    })),
-  };
+    }));
+  }
 
+  const { signal, cancel } = getSignal(options, 30000);
   let res;
   try {
     res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -70,13 +95,15 @@ async function sendAnthropic(config, apiKey, messages, tools, systemPrompt) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
+      signal,
     });
   } catch (err) {
     if (err.name === "TimeoutError") {
       throw new Error("Anthropic API timed out after 30s. Check your connection and try again.");
     }
     throw err;
+  } finally {
+    cancel();
   }
 
   if (!res.ok) {
@@ -154,7 +181,7 @@ function parseAnthropicResponse(data) {
 
 // ── OpenAI / OpenRouter / NVIDIA NIM / Cerebras / Groq ──────────────────── ///
 
-async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl) {
+async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, options = {}) {
   // OpenAI newer models require max_completion_tokens; all others use max_tokens
   const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
   const body = {
@@ -164,15 +191,17 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
       { role: "system", content: systemPrompt },
       ...toOpenAIMessages(messages),
     ],
-    tools: tools.map((t) => ({
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools.map((t) => ({
       type: "function",
       function: {
         name: t.name,
         description: t.description,
         parameters: t.parameters,
       },
-    })),
-  };
+    }));
+  }
 
   const headers = {
     "Content-Type": "application/json",
@@ -184,13 +213,14 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     headers["X-Title"] = "PortScope";
   }
 
+  const { signal, cancel } = getSignal(options, 30000);
   let res;
   try {
     res = await fetch(baseUrl, {
       method: "POST",
       headers,
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
+      signal,
     });
   } catch (err) {
     if (err.name === "TimeoutError") {
@@ -200,6 +230,8 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
       );
     }
     throw err;
+  } finally {
+    cancel();
   }
 
   if (!res.ok) {
@@ -297,7 +329,7 @@ function parseOpenAIResponse(data) {
 
 // ── Ollama (Local) ─────────────────────────────────────────────────────── ///
 
-async function sendOllama(config, messages, systemPrompt) {
+async function sendOllama(config, messages, systemPrompt, options = {}) {
   const endpoint = config.ai.ollamaEndpoint || "http://localhost:11434";
   const chatUrl = `${endpoint}/api/chat`;
 
@@ -317,13 +349,14 @@ async function sendOllama(config, messages, systemPrompt) {
     stream: false,
   };
 
+  const { signal, cancel } = getSignal(options, 60000);
   let res;
   try {
     res = await fetch(chatUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(60000),
+      signal,
     });
   } catch (err) {
     if (err.name === "TimeoutError") {
@@ -337,6 +370,8 @@ async function sendOllama(config, messages, systemPrompt) {
       );
     }
     throw err;
+  } finally {
+    cancel();
   }
 
   if (!res.ok) {
@@ -360,7 +395,7 @@ async function sendOllama(config, messages, systemPrompt) {
 
 // ── Google Gemini ──────────────────────────────────────────────────────── ///
 
-async function sendGemini(config, apiKey, messages, tools, systemPrompt) {
+async function sendGemini(config, apiKey, messages, tools, systemPrompt, options = {}) {
   const model = config.ai.model;
   const baseUrl = PROVIDER_DEFAULTS.gemini.baseUrl;
   const url = `${baseUrl}/models/${model}:generateContent?key=${apiKey}`;
@@ -380,13 +415,14 @@ async function sendGemini(config, apiKey, messages, tools, systemPrompt) {
     },
   };
 
+  const { signal, cancel } = getSignal(options, 30000);
   let res;
   try {
     res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(30000),
+      signal,
     });
   } catch (err) {
     if (err.name === "TimeoutError") {
@@ -395,6 +431,8 @@ async function sendGemini(config, apiKey, messages, tools, systemPrompt) {
       );
     }
     throw err;
+  } finally {
+    cancel();
   }
 
   if (!res.ok) {
@@ -536,30 +574,39 @@ async function* parseSSEStream(response) {
 }
 
 
-async function streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk) {
+async function streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk, options = {}) {
   const body = {
     model: config.ai.model,
     max_tokens: config.ai.maxTokens,
     stream: true,
     system: systemPrompt,
     messages: toAnthropicMessages(messages),
-    tools: tools.map((t) => ({
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools.map((t) => ({
       name: t.name,
       description: t.description,
       input_schema: t.parameters,
-    })),
-  };
+    }));
+  }
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000),
-  });
+  const { signal, cancel } = getSignal(options, 60000);
+  let res;
+  try {
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    cancel();
+    throw err;
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -631,7 +678,7 @@ async function streamAnthropic(config, apiKey, messages, tools, systemPrompt, on
 }
 
 
-async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, onChunk) {
+async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, onChunk, options = {}) {
   const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
   const body = {
     model: config.ai.model,
@@ -642,15 +689,17 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
       { role: "system", content: systemPrompt },
       ...toOpenAIMessages(messages),
     ],
-    tools: tools.map((t) => ({
+  };
+  if (tools && tools.length > 0) {
+    body.tools = tools.map((t) => ({
       type: "function",
       function: {
         name: t.name,
         description: t.description,
         parameters: t.parameters,
       },
-    })),
-  };
+    }));
+  }
 
   const headers = {
     "Content-Type": "application/json",
@@ -662,12 +711,19 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
     headers["X-Title"] = "PortScope";
   }
 
-  const res = await fetch(baseUrl, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(60000),
-  });
+  const { signal, cancel } = getSignal(options, 60000);
+  let res;
+  try {
+    res = await fetch(baseUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    cancel();
+    throw err;
+  }
 
   if (!res.ok) {
     const err = await res.text();
@@ -740,6 +796,7 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
     }
   }
 
+  cancel();
   return result;
 }
 
@@ -756,7 +813,7 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
  * @param {function} onChunk - Called with each text delta: onChunk(textDelta)
  * @returns {Promise<{text: string, toolCalls: Array, usage: object, stopReason: string}>}
  */
-export async function sendMessageStream(config, apiKey, messages, tools, systemPrompt, onChunk) {
+export async function sendMessageStream(config, apiKey, messages, tools, systemPrompt, onChunk, options = {}) {
   const provider = config.ai.provider;
 
   await ensureModelDiscovered(config.ai.provider, apiKey, config.ai.model, config.ai.ollamaEndpoint).catch(() => { });
@@ -764,25 +821,26 @@ export async function sendMessageStream(config, apiKey, messages, tools, systemP
   try {
     switch (provider) {
       case "anthropic":
-        return await streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk);
+        return await streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk, options);
       case "openai":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, onChunk);
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, onChunk, options);
       case "openrouter":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, onChunk);
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, onChunk, options);
       case "nvidia":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, onChunk);
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, onChunk, options);
       case "cerebras":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, onChunk);
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, onChunk, options);
       case "groq":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, onChunk);
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, onChunk, options);
       default:
         // Gemini, Ollama: fall back to non-streaming
-        return await sendMessage(config, apiKey, messages, tools, systemPrompt);
+        return await sendMessage(config, apiKey, messages, tools, systemPrompt, options);
     }
   } catch (err) {
+    if (err.name === "AbortError") throw err;
     if (err.message.includes("API error") || err.message.includes("does not exist") || err.message.includes("Invalid ") || err.message.includes("temporarily unavailable") || err.message.includes("streaming error")) {
       throw err;
     }
-    return await sendMessage(config, apiKey, messages, tools, systemPrompt);
+    return await sendMessage(config, apiKey, messages, tools, systemPrompt, options);
   }
 }

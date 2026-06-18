@@ -18,9 +18,24 @@ export async function startChat(config, apiKey, verbose = false) {
     output: process.stdout,
   });
 
+  let isExecuting = false;
+  /** @type {AbortController|null} */
+  let activeAbortController = null;
+
+  rl.on("SIGINT", () => {
+    if (isExecuting && activeAbortController) {
+      activeAbortController.abort();
+    } else {
+      console.log(chalk.gray("\n  👋 Goodbye!\n"));
+      rl.close();
+    }
+  });
+
   printChatHeader(state);
 
   const prompt = () => {
+    if (rl.closed) return;
+
     rl.question(chalk.rgb(100, 200, 255)("  ❯ "), async (input) => {
       const trimmed = input.trim();
       if (!trimmed) {
@@ -50,6 +65,8 @@ export async function startChat(config, apiKey, verbose = false) {
         return;
       }
 
+      isExecuting = true;
+
       const { text, images, errors } = extractImages(trimmed);
       for (const err of errors) {
         console.log(chalk.yellow(`  ⚠ ${err}`));
@@ -73,12 +90,28 @@ export async function startChat(config, apiKey, verbose = false) {
         messages.push({ role: "user", content: text });
       }
 
+      activeAbortController = new AbortController();
+
       try {
-        await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
+        await processConversation(state.config, state.apiKey, messages, rl, {
+          verbose: state.verbose,
+          signal: activeAbortController.signal,
+        });
         saveConversation(state.conversationId, state.config, messages);
       } catch (err) {
-        messages.pop();
-        console.log(formatChatError(err));
+        if (err.name === "AbortError") {
+          process.stdout.write("\x1b[?25h\r\x1b[2K");
+          console.log(`\n  ${chalk.red("✕")} ${chalk.dim("Request cancelled")}\n`);
+          if (messages.length > 0 && messages[messages.length - 1].role === "user") {
+            messages.pop();
+          }
+        } else {
+          messages.pop();
+          console.log(formatChatError(err));
+        }
+      } finally {
+        activeAbortController = null;
+        isExecuting = false;
       }
 
       prompt();

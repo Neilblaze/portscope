@@ -5,6 +5,7 @@ import { fetchAvailableModels, validateApiKey } from "../config/models.js";
 import { maskApiKey } from "../config/mask.js";
 import { sanitizeError } from "../config/sanitize-error.js";
 import { resetUsage } from "./usage.js";
+import { generateConversationId } from "./history.js";
 
 
 export function printChatHeader(state) {
@@ -172,6 +173,7 @@ export async function switchProvider(state, rl, messages = []) {
   if (messages.length > 0) {
     messages.length = 0;
     resetUsage();
+    state.conversationId = generateConversationId();
     console.log(`  ${chalk.gray("🗑️")} ${chalk.dim("Conversation history cleared.")}`);
     console.log();
   }
@@ -192,7 +194,7 @@ export async function switchProvider(state, rl, messages = []) {
   console.log();
 }
 
-export async function revokeApiKeyFlow(state, rl) {
+export async function revokeApiKeyFlow(state, rl, providerArg) {
   const configuredProviders = [];
   for (const id of PROVIDER_IDS) {
     if (id === "ollama") continue;
@@ -200,6 +202,32 @@ export async function revokeApiKeyFlow(state, rl) {
     if (key) {
       configuredProviders.push(id);
     }
+  }
+
+  if (providerArg) {
+    const targetProvider = providerArg.toLowerCase();
+    
+    if (!PROVIDER_IDS.includes(targetProvider)) {
+      console.log(chalk.red(`\n  Unknown provider: "${targetProvider}"\n`));
+      return;
+    }
+    
+    if (!configuredProviders.includes(targetProvider)) {
+      console.log(chalk.yellow(`\n  No API key found for ${PROVIDER_DEFAULTS[targetProvider].label}.\n`));
+      return;
+    }
+
+    const defaults = PROVIDER_DEFAULTS[targetProvider];
+    revokeApiKey(targetProvider);
+    console.log(`\n  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Revoked API key for ${defaults.label}\n`)}`);
+
+    if (state.config.ai.provider === targetProvider) {
+      state.apiKey = null;
+      console.log(chalk.yellow(`  The API key for your current provider (${defaults.label}) has been revoked.`));
+      console.log(chalk.yellow(`  Please configure a new provider to continue using natural language.\n`));
+      await switchProvider(state, rl, []);
+    }
+    return;
   }
 
   if (configuredProviders.length === 0) {

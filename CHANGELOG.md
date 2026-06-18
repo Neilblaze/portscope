@@ -2,6 +2,20 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.4] - 2026-06-18
+
+### Added
+- **Instant Provider Revocation** — The `/revoke` command now supports an optional provider argument (e.g. `/revoke openai`). Passing the provider name automatically bypasses the interactive confirmation prompts and instantly revokes the associated key for seamless workflow.
+- **Live Mode for `list` Command** — Completely redesigned the `list --live` polling architecture. Separated the heavy background process/port polling (updates every 2 seconds) from the terminal UI rendering loop (updates every 1 second). This allows process `UPTIME` to tick flawlessly per-second for a significantly smoother and more responsive terminal experience.
+
+### Changed
+- **Release Automation Formatting** — Restructured the `release.toml` file to inject the official PortScope Hero Banner and standardized markdown headings natively into GitHub Release notes for future automated versions.
+- **Robust Signal Handling** — Deep architectural reliability optimizations targeting OS-level signal handling to ensure graceful process termination and interrupt catches across varied terminal environments.
+
+### Fixed
+- **Usage Metrics Persistence** — Fixed a critical bug where `/usage` metrics were resetting entirely upon exiting the interactive session. Telemetry data now correctly syncs to `~/.portscope/metrics.json` via native `fs` methods, accurately tracking LLM token consumption, costs, and context compactions indefinitely.
+- **Windows Watch Mode Interrupts** — Resolved an issue affecting Windows users where interrupting `watch` mode failed to correctly catch signals and terminate associated sub-processes, resulting in stalled terminal states.
+
 ## [1.8.3] - 2026-06-11
 
 ### Added

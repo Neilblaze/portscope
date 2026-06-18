@@ -51,10 +51,13 @@ export function helpCommand() {
     `    ${chalk.cyan("portscope watch")}          Monitor port changes live`,
   );
   console.log(
+    `    ${chalk.cyan("portscope list --live")}    Auto-refresh port table live`,
+  );
+  console.log(
     `    ${chalk.cyan("portscope watch --fe")}     Watch any specific type of port`,
   );
   console.log(
-    `    ${chalk.cyan("portscope watch --fe,be")} Watch frontend + backend`,
+    `    ${chalk.cyan("portscope watch --fe,be")}  Watch frontend + backend`,
   );
   console.log(
     `    ${chalk.cyan("portscope watch --ar")}     Auto-restart crashed ports`,

@@ -25,16 +25,16 @@ const TOOL_LABELS = {
 };
 
 
-async function callAI(config, apiKey, messages, verbose, onChunk) {
+async function callAI(config, apiKey, messages, verbose, onChunk, options = {}) {
   const compacted = prepareMessages(messages, { maxContextTokens: config.ai?.maxContextTokens || 32000 });
   if (verbose) {
-    return sendMessageStream(config, apiKey, compacted, TOOLS, SYSTEM_PROMPT, onChunk);
+    return sendMessageStream(config, apiKey, compacted, TOOLS, SYSTEM_PROMPT, onChunk, options);
   }
-  return sendMessage(config, apiKey, compacted, TOOLS, SYSTEM_PROMPT);
+  return sendMessage(config, apiKey, compacted, TOOLS, SYSTEM_PROMPT, options);
 }
 
 
-async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLevel = 0) {
+async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLevel = 0, options = {}) {
   if (verbose) {
     let fullText = "";
     let lastRenderedLines = 0;
@@ -67,7 +67,7 @@ async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLe
           const cols = process.stdout.columns || 80;
           const termRows = process.stdout.rows || 24;
           const maxLines = Math.max(10, termRows - 2);
-          
+
           const rawLines = fullRendered.split("\n");
           const wrappedLines = [];
           for (const line of rawLines) {
@@ -75,7 +75,7 @@ async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLe
             const height = Math.max(1, Math.ceil(visibleLen / cols));
             wrappedLines.push({ text: line, height });
           }
-          
+
           const totalHeight = wrappedLines.reduce((sum, l) => sum + l.height, 0);
           let rendered = fullRendered;
           let linesCount = totalHeight;
@@ -89,17 +89,17 @@ async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLe
               topH += wrappedLines[i].height;
               i++;
             }
-            
+
             let botH = 0;
             const botLines = [];
             let j = wrappedLines.length - 1;
-            const avail = maxLines - topH - 1; 
+            const avail = maxLines - topH - 1;
             while (j > i && botH + wrappedLines[j].height <= avail) {
               botLines.unshift(wrappedLines[j].text);
               botH += wrappedLines[j].height;
               j--;
             }
-            
+
             rendered = [...topLines, chalk.dim("      ..."), ...botLines].join("\n");
             linesCount = topH + 1 + botH;
           }
@@ -109,7 +109,7 @@ async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLe
         } else {
           lastRenderedLines = 0;
         }
-      });
+      }, options);
 
       if (isStreaming) {
         if (lastRenderedLines > 0) {
@@ -126,13 +126,15 @@ async function callAIWithSpinner(config, apiKey, messages, verbose, t0, indentLe
         clearInterval(spinnerInterval);
         process.stdout.write("\r\x1b[2K");
       }
+      process.stdout.write("\x1b[?25h");
     }
   } else {
     const spinner = startSpinner();
     try {
-      return await callAI(config, apiKey, messages, false, null);
+      return await callAI(config, apiKey, messages, false, null, options);
     } finally {
       spinner.stop();
+      process.stdout.write("\x1b[?25h");
     }
   }
 }
@@ -186,12 +188,13 @@ async function executeToolCall(tc, rl, verbose) {
 
 
 export async function processConversation(config, apiKey, messages, rl, options = {}) {
-  const { verbose = false } = options;
+  const { verbose = false, signal } = options;
+  const fetchOptions = signal ? { signal } : {};
   const t0 = Date.now();
   let tookAction = false;
   let hasPromptedDestructive = false;
 
-  let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0, hasPromptedDestructive ? 4 : 0);
+  let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0, hasPromptedDestructive ? 4 : 0, fetchOptions);
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
 
   if (verbose && response.usage) {
@@ -204,6 +207,12 @@ export async function processConversation(config, apiKey, messages, rl, options 
 
   // Tool calling loop — AI can make multiple sequential rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
+    if (signal && signal.aborted) {
+      const err = new Error("Request cancelled");
+      err.name = "AbortError";
+      throw err;
+    }
+
     tookAction = true;
 
     if (response.text && !response._streamRendered) {
@@ -232,9 +241,15 @@ export async function processConversation(config, apiKey, messages, rl, options 
     }));
     messages.push({ role: "user", toolResults: sanitizedResults });
 
+    if (signal && signal.aborted) {
+      const err = new Error("Request cancelled");
+      err.name = "AbortError";
+      throw err;
+    }
+
     const currentIndent = hasPromptedDestructive ? 4 : 0;
     const t1 = Date.now();
-    response = await callAIWithSpinner(config, apiKey, messages, verbose, t1, currentIndent);
+    response = await callAIWithSpinner(config, apiKey, messages, verbose, t1, currentIndent, fetchOptions);
     trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
 
     if (verbose && response.usage) {

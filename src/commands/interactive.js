@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { loadConfig, getApiKey } from "../config/loader.js";
-import { listCommand } from "./list.js";
+import { listCommand, listLiveCommand } from "./list.js";
 import { inspectCommand } from "./inspect.js";
 import { killCommand } from "./kill.js";
 import { psCommand } from "./ps.js";
@@ -100,9 +100,12 @@ export async function interactiveMode(showAll, verbose = false) {
   });
 
   let isExecuting = false;
+  let activeAbortController = null;
 
   rl.on("SIGINT", () => {
-    if (isExecuting) {
+    if (isExecuting && activeAbortController) {
+      activeAbortController.abort();
+    } else if (isExecuting) {
       process.emit("SIGINT");
     } else {
       console.log(chalk.gray("\n  👋 Goodbye!\n"));
@@ -222,12 +225,27 @@ export async function interactiveMode(showAll, verbose = false) {
           messages.push({ role: "user", content: text });
         }
 
+        activeAbortController = new AbortController();
+
         try {
-          await processConversation(state.config, state.apiKey, messages, rl, { verbose: state.verbose });
+          await processConversation(state.config, state.apiKey, messages, rl, {
+            verbose: state.verbose,
+            signal: activeAbortController.signal,
+          });
           saveConversation(state.conversationId, state.config, messages);
         } catch (err) {
-          messages.pop();
-          console.log(formatChatError(err));
+          if (err.name === "AbortError") {
+            process.stdout.write("\x1b[?25h\r\x1b[2K");
+            console.log(`\n  ${chalk.red("✕")} ${chalk.dim("Request cancelled")}\n`);
+            if (messages.length > 0 && messages[messages.length - 1].role === "user") {
+              messages.pop();
+            }
+          } else {
+            messages.pop();
+            console.log(formatChatError(err));
+          }
+        } finally {
+          activeAbortController = null;
         }
       } finally {
         isExecuting = false;
@@ -382,17 +400,26 @@ async function handleDirectCommand(input, rl) {
 
     case "list":
     case "ports":
-      if (parts.length > 2 || (parts[1] && !["--all", "-a", "ports"].includes(parts[1]))) {
-        return false;
-      }
-      try {
-        await listCommand(parts.includes("--all") || parts.includes("-a"), false);
+      {
+        const validFlags = new Set(["--all", "-a", "--live", "ports"]);
+        if (parts.length > 3 || (parts.length > 1 && parts.slice(1).some((p) => !validFlags.has(p)))) {
+          return false;
+        }
+        const isLive = parts.includes("--live");
+        const isAll = parts.includes("--all") || parts.includes("-a");
         try {
-          const ports = await getListeningPorts();
-          setPortCache(ports);
-        } catch { /* non-critical */ }
-      } catch (err) {
-        console.log(formatChatError(err));
+          if (isLive) {
+            await listLiveCommand(isAll, rl);
+          } else {
+            await listCommand(isAll, false);
+            try {
+              const ports = await getListeningPorts();
+              setPortCache(ports);
+            } catch { /* non-critical */ }
+          }
+        } catch (err) {
+          console.log(formatChatError(err));
+        }
       }
       return true;
 
@@ -414,8 +441,8 @@ async function animateSlashCommand(promptPrefix, input) {
   const parts = trimmed.split(/\s+/);
   const cmd = parts[0].toLowerCase();
 
-  const noArgs = ["/help", "/exit", "/quit", "/clear", "/provider", "/providers", "/revoke", "/models", "/status", "/usage", "/verbose"];
-  const oneArg = ["/model", "/history", "/load", "/export"];
+  const noArgs = ["/help", "/exit", "/quit", "/clear", "/provider", "/providers", "/models", "/status", "/usage", "/verbose"];
+  const oneArg = ["/model", "/history", "/load", "/export", "/revoke"];
 
   let isValid = false;
   let baseCmd = "";
@@ -477,6 +504,7 @@ function printInteractiveHelp() {
   console.log(`  ${chalk.cyan("restart <n>")}      Kill & relaunch a process by port`);
   console.log(`  ${chalk.cyan("ps")}               Show running dev processes`);
   console.log(`  ${chalk.cyan("list")}             Refresh port table`);
+  console.log(`  ${chalk.cyan("list --live")}      Auto-refresh port table (LIVE)`);
   console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);
   console.log(`  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`);
   console.log(`  ${chalk.cyan("watch")}            Monitor port changes (LIVE)`);

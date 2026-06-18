@@ -42,6 +42,50 @@ function isInjectionAttempt(input) {
 }
 
 
+// ── Self-Help ─────────────────────────────────────────────────────────────── //
+
+const SELF_HELP_COMMAND_NAMES = [
+  "portscope",
+  // Slash commands (with or without the leading /)
+  "/provider", "/revoke", "/models", "/model", "/status", "/usage",
+  "/verbose", "/clear", "/history", "/load", "/export", "/help", "/exit",
+  "provider", "revoke", "verbose",
+  // Direct REPL commands
+  "kill", "pause", "resume", "restart", "watch", "inspect", "logs",
+  "clean", "ps", "list", "chat",
+];
+
+const SELF_HELP_PATTERNS = [
+  // "how do I /revoke", "how to revoke my key", "how can I export"
+  /\b(?:how|where|can i|could i|do i|what(?:'s| is| does))\b.*\b(?:\/(?:provider|revoke|models?|status|usage|verbose|clear|history|load|export|help|exit)|portscope)\b/i,
+  // Questions mentioning api key + revoke/change/delete/remove/update in PortScope context
+  /\b(?:revoke|remove|delete|change|update|reset|rotate|set|add|configure|switch|manage)\b.*\b(?:api\s*key|key|provider|model)\b/i,
+  /\b(?:api\s*key|key|provider|model)\b.*\b(?:revoke|remove|delete|change|update|reset|rotate|set|add|configure|switch|manage)\b/i,
+  // "what commands", "list commands", "available commands/features"
+  /\b(?:commands?|features?|options?|capabilities|what can (?:you|portscope))\b/i,
+  // "how to use portscope", "portscope help"
+  /\bportscope\b/i,
+  // Explicit slash-command references (must have the /)
+  /\/(?:provider|revoke|models?|status|usage|verbose|clear|history|load|export|help|exit)\b/i,
+  // "switch provider", "change model", "set verbose"
+  /\b(?:switch|change|set|toggle|enable|disable)\s+(?:provider|model|verbose|streaming)\b/i,
+  // "conversation history", "export chat", "clear conversation"
+  /\b(?:conversation|chat)\s+(?:history|export|clear|reset|load|save)\b/i,
+  /\b(?:history|export|clear|reset|load|save)\s+(?:conversation|chat)\b/i,
+  // "token usage", "cost", "usage stats"
+  /\b(?:token|usage|cost|billing|spend)\b.*\b(?:stats?|usage|dashboard|check|show|see)\b/i,
+];
+
+function isSelfHelp(input) {
+  const lower = input.toLowerCase();
+  if (SELF_HELP_COMMAND_NAMES.some((cmd) => lower.includes(cmd))) {
+    if (/\/\w+/.test(lower)) return true;
+    if (/\b(?:how|where|can|could|do|does|what|which|show|help|use|using|explain|tell)\b/i.test(lower)) return true;
+  }
+  return SELF_HELP_PATTERNS.some((re) => re.test(input));
+}
+
+
 // ── Off-Topic Detection ─────────────────────────────────────────────────── //
 
 /**
@@ -159,6 +203,10 @@ export function classifyIntent(input) {
     };
   }
 
+  if (isSelfHelp(trimmed)) {
+    return { type: "port_query", normalized: trimmed };
+  }
+
   if (isOffTopic(trimmed)) {
     return {
       type: "off_topic",
@@ -190,4 +238,4 @@ export function classifyIntent(input) {
   return { type: "port_query", normalized: trimmed };
 }
 
-export { isInjectionAttempt, isOffTopic, isVague, hasDomainRelevance, generateSuggestions };
+export { isInjectionAttempt, isOffTopic, isVague, isSelfHelp, hasDomainRelevance, generateSuggestions };

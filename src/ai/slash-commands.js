@@ -30,6 +30,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
     case "clear":
       messages.length = 0;
       resetUsage();
+      state.conversationId = generateConversationId();
       await flashSuccess("Conversation cleared.");
       return;
 
@@ -39,7 +40,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
       return;
 
     case "revoke":
-      await revokeApiKeyFlow(state, rl);
+      await revokeApiKeyFlow(state, rl, parts[1]);
       return;
 
     case "models":
@@ -166,6 +167,7 @@ function printSlashHelp() {
     `  ${chalk.cyan("restart <n>")}      Kill & relaunch a process by port`,
     `  ${chalk.cyan("ps")}               Show running dev processes`,
     `  ${chalk.cyan("list")}             Refresh port table`,
+    `  ${chalk.cyan("list --live")}      Auto-refresh port table (LIVE)`,
     `  ${chalk.cyan("logs <n>")}         Tail log output`,
     `  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`,
     `  ${chalk.cyan("watch")}            Monitor port changes (LIVE)`,

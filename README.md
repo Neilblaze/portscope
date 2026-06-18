@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.8.3-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.4-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -87,7 +87,8 @@ Type `exit` or press `Ctrl+C` to quit.
 ### Show all listening ports
 
 ```bash
-portscope --all
+portscope --all                      # Show all ports including system services
+portscope list --live                # Real-time auto-refreshing table
 ```
 
 Includes system services, desktop apps, and everything else listening on your machine.
@@ -140,6 +141,15 @@ Useful for temporarily freeing resources — e.g., pausing a 10 GB inference ser
 
 > [!NOTE]
 > Pause/resume uses POSIX `SIGSTOP`/`SIGCONT` and is available on macOS and Linux. Not supported on Windows.
+
+### Restart a process
+
+```bash
+portscope restart 3000            # Kill and relaunch using original command
+portscope restart 3000 -f         # Force restart (SIGKILL)
+```
+
+Automatically resolves the exact package manager and dev script (e.g. `pnpm run dev`) or native start command, waiting for the port to become free before relaunching.
 
 ### View process logs
 
@@ -272,7 +282,7 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 | Command | Description |
 |---------|-------------|
 | `/provider` | Switch AI provider and configure API key |
-| `/revoke` | Revoke a saved API key |
+| `/revoke [name]` | Revoke a saved API key (e.g., `/revoke openai` to bypass prompts) |
 | `/models` | Browse and select a model (live listing for OpenAI, Gemini, OpenRouter & NVIDIA NIM) |
 | `/model <name>` | Set model directly |
 | `/status` | Show current provider, model, and key status |
@@ -382,16 +392,18 @@ graph TB
     end
 
     subgraph Command_Layer["Command Layer"]
-        DIRECT[Direct Commands<br/>list · inspect · kill<br/>clean · logs · watch · ps]
+        DIRECT[Direct Commands<br/>list · ps · inspect · watch<br/>kill · restart · pause · resume · clean · logs · mcp]
         INTERACTIVE{{Interactive Mode<br/>REPL + AI Chat}}
     end
 
     subgraph Scanner_Layer["Scanner Layer - System Introspection"]
         PORTS[Port Scanner<br/>lsof TCP listeners]
+        TOPOLOGY[Topology Mapper<br/>port connections]
         PROCESS[Process Info<br/>ps batch queries]
         FRAMEWORK[Framework Detection<br/>package.json · Docker images]
         ENV[Environment Detection<br/>NODE_ENV · process flags]
         LOGS[Log Discovery<br/>lsof file descriptors]
+        GUARD[System Guard<br/>protect OS processes]
     end
 
     subgraph Platform_Abstraction["Platform Abstraction"]
@@ -400,10 +412,13 @@ graph TB
     end
 
     subgraph AI_Orchestration["AI Orchestration"]
+        INTENT[Intent Classifier<br/>anti-injection · routing]
         CONVERSATION{{Conversation Manager<br/>message history · tool routing}}
+        COMPACTION[Context Compaction<br/>sliding window]
         CLIENT[Multi-Provider Client<br/>Anthropic · OpenAI · Gemini<br/>OpenRouter · NVIDIA · Cerebras<br/>Groq · Ollama]
         EXECUTOR[Tool Executor<br/>permission checks · execution]
-        TOOLS[Tool Definitions<br/>list_ports · kill_process<br/>inspect_port · clean_orphaned]
+        SANITIZER[Data Sanitizer<br/>secrets redaction]
+        TOOLS[Tool Definitions<br/>11+ specialized actions]
         USAGE[Usage Tracking<br/>tokens · cost estimation]
         HISTORY[Conversation History<br/>save · load · export]
     end
@@ -427,23 +442,32 @@ graph TB
     DIRECT --> PROCESS
     DIRECT --> LOGS
     
-    INTERACTIVE --> CONVERSATION
+    INTERACTIVE --> INTENT
+    INTENT --> CONVERSATION
     INTERACTIVE --> DIRECT
     
-    CONVERSATION --> CLIENT
+    CONVERSATION --> COMPACTION
+    COMPACTION --> CLIENT
     CONVERSATION --> EXECUTOR
     CLIENT --> TOOLS
-    EXECUTOR --> PORTS
-    EXECUTOR --> PROCESS
+    
+    EXECUTOR --> GUARD
+    GUARD --> PORTS
+    GUARD --> PROCESS
     EXECUTOR --> LOGS
+    EXECUTOR --> TOPOLOGY
     
     PORTS --> FRAMEWORK
     PORTS --> ENV
     PORTS --> PLATFORM
+    TOPOLOGY --> PLATFORM
     PROCESS --> PLATFORM
     LOGS --> PLATFORM
     
     PLATFORM --> SYSCALLS
+    
+    EXECUTOR -.-> SANITIZER
+    SANITIZER -.-> CONVERSATION
     
     DIRECT --> TABLES
     INTERACTIVE --> MARKDOWN
@@ -458,7 +482,7 @@ graph TB
 
     %% Rounded nodes
     classDef rounded rx:12,ry:12;
-    class CLI,DIRECT,INTERACTIVE,PORTS,PROCESS,FRAMEWORK,ENV,LOGS,PLATFORM,SYSCALLS,CONVERSATION,CLIENT,EXECUTOR,TOOLS,USAGE,HISTORY,TABLES,MARKDOWN,SPINNER,GHOST,CONFIG,SCHEMA rounded;
+    class CLI,DIRECT,INTERACTIVE,PORTS,TOPOLOGY,PROCESS,FRAMEWORK,ENV,LOGS,GUARD,PLATFORM,SYSCALLS,INTENT,CONVERSATION,COMPACTION,CLIENT,EXECUTOR,SANITIZER,TOOLS,USAGE,HISTORY,TABLES,MARKDOWN,SPINNER,GHOST,CONFIG,SCHEMA rounded;
 
     %% Subgraph styling (pseudo-transparent)
     style CLI_Entry_Point fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
