@@ -2,6 +2,11 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.5] - 2026-07-06
+
+### Added
+- **Multi-Port Log Interleaving** — The `logs` command now supports unified tailing. By passing multiple comma-separated ports (e.g., `portscope logs 3000,5000`) or using the `--all` flag (`portscope logs --all`), PortScope will dynamically multiplex logs from all active development processes into a single terminal window. Each stream is color-coded and prefixed (e.g., `[node :3000]`), and the internal line-buffer ensures that high-throughput outputs, like JSON stack traces, do not tear or inject tags mid-line.
+
 ## [1.8.4] - 2026-06-18
 
 ### Added

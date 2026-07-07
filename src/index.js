@@ -50,7 +50,7 @@ async function main() {
       await killCommand(filteredArgs);
       break;
     case "logs":
-      await logsCommand(filteredArgs);
+      await logsCommand(filteredArgs, showAll);
       break;
     case "list":
       if (args.includes("--live")) {
