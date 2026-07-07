@@ -210,6 +210,15 @@ portscope watch --fe,be                # Monitor only specific port roles (e.g. 
 portscope chat                         # Jump directly into AI chat mode
 ```
 
+### Port Topology & Connection Mapping
+
+```bash
+get_port_connections
+get_port_connections --port 3000
+```
+
+Maps inter-port connections between local listening services. It reveals dependencies by showing which other local ports a service is connected to (e.g., Next.js on `:3000` → Flask backend on `:5000`) along with external connection counts.
+
 **Watch mode** displays live metrics for every active port including Memory Usage (RAM), Process Uptime, Bind Address (127.0.0.1 vs 0.0.0.0), Process ID (PID), active connection counts, request rates (req/s), and real-time Bandwidth / Throughput (`↑...B/s ↓...B/s`), helping identify load issues and monitor live traffic without additional/external tools.
 
 - **Autoreload (`--autoreload` / `--ar`)**: Automatically restarts crashed processes using their recorded start/dev commands if they crash.
@@ -254,6 +263,17 @@ PortScope's AI lets you manage ports with natural language — *"kill whatever's
 
 > [!TIP]
 > **System Telemetry**: The AI has direct access to a `get_system_stats()` tool. You can ask it to diagnose machine-level performance bottlenecks, check CPU load averages, or analyze memory pressure.
+
+### Multimodal / Vision Support
+
+You can attach images to chat messages for multimodal analysis, and the AI will analyze them alongside your prompt.
+
+```
+❯ What do you see in ~/screenshot.png
+❯ Analyze the errors in ./terminal-output.jpeg
+```
+
+Supported formats: `.png`, `.jpg`, `.jpeg` (max 10 MB per image). Paths can be absolute, home-relative (`~`), or current-directory-relative (`./`).
 
 ### Supported Providers
 
@@ -392,7 +412,7 @@ graph TB
     end
 
     subgraph Command_Layer["Command Layer"]
-        DIRECT[Direct Commands<br/>list · ps · inspect · watch<br/>kill · restart · pause · resume · clean · logs · mcp]
+        DIRECT[Direct Commands<br/>list · ps · inspect · watch · kill<br/>restart · pause · resume · clean<br/>logs · mcp · help]
         INTERACTIVE{{Interactive Mode<br/>REPL + AI Chat}}
     end
 
@@ -404,11 +424,15 @@ graph TB
         ENV[Environment Detection<br/>NODE_ENV · process flags]
         LOGS[Log Discovery<br/>lsof file descriptors]
         GUARD[System Guard<br/>protect OS processes]
+        DEV_CMD[Dev Command Resolver<br/>package manager · flags]
+        ROLES[Role Classification<br/>frontend · backend · db]
+        MEMORY[Memory Stats<br/>pressure · load]
     end
 
     subgraph Platform_Abstraction["Platform Abstraction"]
         PLATFORM([Platform Layer<br/>darwin · linux · win32])
         SYSCALLS[System Calls<br/>lsof · ps · docker · git]
+        SUDO[Sudo Interceptor<br/>dynamic privilege escalation]
     end
 
     subgraph AI_Orchestration["AI Orchestration"]
@@ -417,10 +441,12 @@ graph TB
         COMPACTION[Context Compaction<br/>sliding window]
         CLIENT[Multi-Provider Client<br/>Anthropic · OpenAI · Gemini<br/>OpenRouter · NVIDIA · Cerebras<br/>Groq · Ollama]
         EXECUTOR[Tool Executor<br/>permission checks · execution]
-        SANITIZER[Data Sanitizer<br/>secrets redaction]
         TOOLS[Tool Definitions<br/>11+ specialized actions]
         USAGE[Usage Tracking<br/>tokens · cost estimation]
         HISTORY[Conversation History<br/>save · load · export]
+        VISION[Vision Support<br/>image/multimodal processing]
+        PROMPT[System Context<br/>dynamic prompts]
+        SLASH[Slash Commands<br/>chat macros]
     end
 
     subgraph UI_Rendering["UI Rendering"]
@@ -433,6 +459,11 @@ graph TB
     subgraph Configuration["Configuration"]
         CONFIG[Config Loader<br/>portscope.config.json<br/>~/.portscope/]
         SCHEMA[Provider Schema<br/>defaults · validation]
+        SANITIZER[Data Sanitizer<br/>secrets redaction]
+        PROVIDER[Provider Flow<br/>key management]
+        MODELS[Model Discovery<br/>live fetching · caching]
+        PRICING[Pricing Database<br/>llm-pricing.json]
+        LEDGER[Kill History Ledger<br/>restart tracking]
     end
 
     CLI --> DIRECT
@@ -446,8 +477,11 @@ graph TB
     INTENT --> CONVERSATION
     INTERACTIVE --> DIRECT
     
+    CONVERSATION --> SLASH
+    CONVERSATION --> VISION
     CONVERSATION --> COMPACTION
-    COMPACTION --> CLIENT
+    COMPACTION --> PROMPT
+    PROMPT --> CLIENT
     CONVERSATION --> EXECUTOR
     CLIENT --> TOOLS
     
@@ -465,6 +499,11 @@ graph TB
     LOGS --> PLATFORM
     
     PLATFORM --> SYSCALLS
+    SYSCALLS -.-> SUDO
+    
+    FRAMEWORK --> DEV_CMD
+    FRAMEWORK --> ROLES
+    PROCESS --> MEMORY
     
     EXECUTOR -.-> SANITIZER
     SANITIZER -.-> CONVERSATION
@@ -479,19 +518,24 @@ graph TB
     CLI --> CONFIG
     CONVERSATION --> CONFIG
     CONFIG --> SCHEMA
+    CONFIG --> PROVIDER
+    PROVIDER --> MODELS
+    MODELS --> PRICING
+    USAGE --> PRICING
+    DIRECT --> LEDGER
 
     %% Rounded nodes
     classDef rounded rx:12,ry:12;
-    class CLI,DIRECT,INTERACTIVE,PORTS,TOPOLOGY,PROCESS,FRAMEWORK,ENV,LOGS,GUARD,PLATFORM,SYSCALLS,INTENT,CONVERSATION,COMPACTION,CLIENT,EXECUTOR,SANITIZER,TOOLS,USAGE,HISTORY,TABLES,MARKDOWN,SPINNER,GHOST,CONFIG,SCHEMA rounded;
+    class CLI,DIRECT,INTERACTIVE,PORTS,TOPOLOGY,PROCESS,FRAMEWORK,ENV,LOGS,GUARD,DEV_CMD,ROLES,MEMORY,PLATFORM,SYSCALLS,SUDO,INTENT,CONVERSATION,COMPACTION,CLIENT,EXECUTOR,TOOLS,USAGE,HISTORY,VISION,PROMPT,SLASH,TABLES,MARKDOWN,SPINNER,GHOST,CONFIG,SCHEMA,SANITIZER,PROVIDER,MODELS,PRICING,LEDGER rounded;
 
-    %% Subgraph styling (pseudo-transparent)
-    style CLI_Entry_Point fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style Command_Layer fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style Scanner_Layer fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style Platform_Abstraction fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style AI_Orchestration fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style UI_Rendering fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
-    style Configuration fill:#fcfcfd,stroke:#e5e7eb,stroke-width:1px,stroke-dasharray:4 4
+    %% Subgraph styling (transparent with dotted edges)
+    style CLI_Entry_Point fill:transparent,stroke:#3b82f6,stroke-width:2px,stroke-dasharray:5 5
+    style Command_Layer fill:transparent,stroke:#8b5cf6,stroke-width:2px,stroke-dasharray:5 5
+    style Scanner_Layer fill:transparent,stroke:#14b8a6,stroke-width:2px,stroke-dasharray:5 5
+    style Platform_Abstraction fill:transparent,stroke:#10b981,stroke-width:2px,stroke-dasharray:5 5
+    style AI_Orchestration fill:transparent,stroke:#ec4899,stroke-width:2px,stroke-dasharray:5 5
+    style UI_Rendering fill:transparent,stroke:#f59e0b,stroke-width:2px,stroke-dasharray:5 5
+    style Configuration fill:transparent,stroke:#64748b,stroke-width:2px,stroke-dasharray:5 5
 
     %% Highlighted nodes
     style CLI fill:#4a9eff,stroke:#2563eb,color:#fff
