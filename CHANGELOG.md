@@ -2,6 +2,37 @@
 
 All notable changes to PortScope will be documented in this file.
 
+## [1.8.6] - 2026-08-04
+
+### Added
+- **Custom OpenAI-Compatible Endpoints** — PortScope can now talk to any OpenAI-compatible `/v1/chat/completions` server: a self-hosted gateway, LiteLLM/vLLM/LM Studio, a corporate proxy, or your own API. Add as many as you like via the new `/endpoint` command or the **“+ Add a custom endpoint”** entry in `/provider`; each registers as a first-class provider and appears in the picker under its own *Custom endpoints* section. Endpoint definitions persist to `~/.portscope/endpoints.json` (mode `0600`).
+- **Optional Bearer Token Authentication** — Custom endpoints accept an optional `Authorization: Bearer <token>`. Leaving it blank configures an unauthenticated endpoint and **no auth header is sent at all**. Tokens are validated before saving, stored in `~/.portscope/.env` as `PORTSCOPE_CUSTOM_<ID>_TOKEN`, masked everywhere they surface, and revocable with `/revoke`.
+- **Optional Model Pinning** — Endpoints that pin a model server-side can be configured with no model at all; PortScope then omits the `model` field from the request body entirely rather than sending `null`. When the endpoint exposes `/v1/models`, the model is auto-discovered during setup.
+- **Opt-In Streaming per Endpoint** — Custom endpoints are **non-streaming by default**. Answering `y` to the streaming prompt enables a standard SSE `chat.completion.chunk` flow (role delta → content deltas → `finish_reason` → `[DONE]`), including tool calls. Configurable later via `/endpoint edit`.
+- **Smart URL Normalization** — `ai.example.com`, `…/v1`, and `…/v1/chat/completions` all resolve to the same endpoint. Remote hosts default to `https`, `localhost` and private IP ranges to `http`. The `/models` and `/healthz` routes are derived automatically.
+- **Pre-Save Endpoint Probing** — New endpoints are verified before being persisted (a cheap `/models` GET, then a 1-token completion), so a wrong URL, a bad token, or a non-OpenAI-compatible response shape is caught during setup instead of on your first question.
+- **Per-Endpoint Static Headers** — A hand-editable `headers` field in `endpoints.json` merges extra static headers (tenant ids, routing hints) into every request, including model listing and reachability checks.
+
+### Changed
+- **Generic OpenAI-Compatible Dispatch** — `src/ai/client.js` no longer enumerates providers case-by-case for the OpenAI wire format. OpenAI, OpenRouter, NVIDIA NIM, Cerebras, Groq and every custom endpoint now share one code path resolved from `PROVIDER_DEFAULTS`, so new endpoints need no client changes.
+- **Live Provider Registry** — `PROVIDER_IDS` is now a mutable registry seeded from the new frozen `BUILTIN_PROVIDER_IDS`. Custom endpoints are merged into `PROVIDER_DEFAULTS`/`PROVIDER_IDS` at config load, so every existing provider lookup — model discovery, `/revoke`, `/status`, `/usage` telemetry — works unchanged with zero call-site edits.
+- **Graceful Capability Degradation** — If a custom endpoint rejects `tools` or can't stream, PortScope silently retries without that feature and remembers the answer in `endpoints.json`, so later turns skip the wasted round trip. Deliberately scoped to 400/422 responses so a transient 5xx is never recorded as a permanent capability gap.
+- **Endpoint-Aware Error Messages** — Auth failures, 404s, unreachable hosts and non-OpenAI-compatible response shapes now report the endpoint's label and URL with an actionable next step (`/endpoint`, `/revoke`) instead of a raw provider id.
+- **Reachability Probing** — The `/usage` connection check prefers an endpoint's `/models` route, falls back to the conventional `/healthz` liveness route, then to the completions URL, treating 400/404/405 as proof the host answered.
+- **Emoji Heading Hanging Indent** — The markdown renderer now measures a leading emoji's display width and indents the list items beneath it, so bullets hang under the heading text rather than its icon. Handles astral pictographs, VS16 sequences (`⚙️`), ZWJ sequences, and narrow BMP pictographs, and applies to ordered lists and wrapped continuation lines.
+- **Unified Help Screen** — `help` and `/help` rendered two separately hand-maintained copies of the same screen, which had already drifted. Both now render a single shared `printSlashHelp()`; the duplicate in `src/commands/interactive.js` is gone (−46 lines).
+- **Provider Picker Layout** — Custom endpoints are grouped under a spaced `── Custom endpoints ──` divider, tagged `(no auth)` when token-less, and annotated with their URL in dimmed brackets.
+
+### Fixed
+- **Stale Model on Provider Switch** — `persistProviderChoice()` skipped falsy models, so switching to a provider with no pinned model left the *previous* provider's model in `~/.portscope/config.json` — and then sent it to the new endpoint. `null` is now written explicitly.
+- **Blank Usage Dashboard on Minimal Endpoints** — `trackUsage()` returned early when a response carried no `usage` field (common for OpenAI-compatible gateways), so `/usage` reported `Calls: 0` with no latency data. Calls and latency are now recorded regardless of whether token counts are present.
+- **Dangling Provider After Endpoint Removal** — Deleting the active custom endpoint left the session and `config.json` pointing at a provider that no longer existed if the follow-up picker was cancelled. The config now falls back to the default provider, and `loadConfig()` self-heals an unknown provider on startup.
+
+### Technical
+- **New Module** — `src/config/custom-endpoints.js` (208 lines): endpoint CRUD, URL/`/models`/`/healthz` derivation, `custom:<slug>` provider namespacing, per-endpoint env-key naming, learned-capability persistence, and registry merging.
+- **New Tests** — `tests/custom-endpoints.test.js` (25 tests) covering URL normalization, persistence, registry merging, capability downgrades and malformed-entry handling; plus 7 markdown alignment tests. `tests/schema.test.js` re-scoped to `BUILTIN_PROVIDER_IDS` so it stays correct once users register endpoints. Suite now at **318 tests**.
+- **Stock Stateless Payload** — Requests to custom endpoints carry only `messages`, `max_tokens`, and (when applicable) `model`, `tools` and `stream`. No vendor-specific body fields are added, so gateway features gated behind opt-in flags stay at their defaults.
+
 ## [1.8.5] - 2026-07-06
 
 ### Added

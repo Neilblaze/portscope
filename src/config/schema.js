@@ -72,5 +72,9 @@ export const PROVIDER_DEFAULTS = {
 };
 
 
-export const PROVIDER_IDS = ["anthropic", "openai", "gemini", "openrouter", "nvidia", "cerebras", "groq", "ollama"];
+export const BUILTIN_PROVIDER_IDS = Object.freeze([
+  "anthropic", "openai", "gemini", "openrouter", "nvidia", "cerebras", "groq", "ollama",
+]);
+
+export const PROVIDER_IDS = [...BUILTIN_PROVIDER_IDS];
 

@@ -1,6 +1,41 @@
 import { PROVIDER_DEFAULTS } from "../config/schema.js";
 import { stripNulls } from "./context.js";
 import { ensureModelDiscovered } from "../config/models.js";
+import { setEndpointCapability } from "../config/custom-endpoints.js";
+
+// Auth is optional
+function openAIHeaders(provider, apiKey, defaults) {
+  const headers = { "Content-Type": "application/json" };
+
+  if (apiKey && apiKey !== "local") {
+    headers.Authorization = `Bearer ${apiKey}`;
+  }
+
+  if (provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
+    headers["X-Title"] = "PortScope";
+  }
+
+  if (defaults?.extraHeaders) {
+    for (const [k, v] of Object.entries(defaults.extraHeaders)) {
+      if (typeof v === "string") headers[k] = v;
+    }
+  }
+
+  return headers;
+}
+
+
+function looksLikeToolsUnsupported(status, message) {
+  if (status !== 400 && status !== 422) return false;
+  const m = String(message || "").toLowerCase();
+  return (
+    (m.includes("tool") || m.includes("function")) &&
+    (m.includes("not supported") || m.includes("unsupported") || m.includes("unknown") ||
+      m.includes("unexpected") || m.includes("invalid") || m.includes("not allowed") ||
+      m.includes("does not support"))
+  );
+}
 
 function getSignal(options, timeoutMs) {
   const controller = new AbortController();
@@ -36,22 +71,17 @@ export async function sendMessage(config, apiKey, messages, tools, systemPrompt,
       switch (provider) {
         case "anthropic":
           return await sendAnthropic(config, apiKey, messages, tools, systemPrompt, options);
-        case "openai":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, options);
-        case "openrouter":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, options);
-        case "nvidia":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, options);
-        case "cerebras":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, options);
-        case "groq":
-          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, options);
         case "gemini":
           return await sendGemini(config, apiKey, messages, tools, systemPrompt, options);
         case "ollama":
           return await sendOllama(config, messages, systemPrompt, options);
-        default:
-          throw new Error(`Unknown AI provider: ${provider}`);
+        default: {
+          // OpenAI, OpenRouter, NVIDIA, Cerebras, Groq and custom endpoints
+          // all share the same wire format.
+          const defaults = PROVIDER_DEFAULTS[provider];
+          if (!defaults) throw new Error(`Unknown AI provider: ${provider}`);
+          return await sendOpenAI(config, apiKey, messages, tools, systemPrompt, defaults.baseUrl, options);
+        }
       }
     } catch (err) {
       attempt++;
@@ -182,17 +212,25 @@ function parseAnthropicResponse(data) {
 // ── OpenAI / OpenRouter / NVIDIA NIM / Cerebras / Groq ──────────────────── ///
 
 async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, options = {}) {
+  const provider = config.ai.provider;
+  const defaults = PROVIDER_DEFAULTS[provider] || {};
+  const isCustom = defaults.isCustom === true;
+  const label = defaults.label || provider;
+
   // OpenAI newer models require max_completion_tokens; all others use max_tokens
-  const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
+  const tokenKey = provider === "openai" ? "max_completion_tokens" : "max_tokens";
   const body = {
-    model: config.ai.model,
     [tokenKey]: config.ai.maxTokens,
     messages: [
       { role: "system", content: systemPrompt },
       ...toOpenAIMessages(messages),
     ],
   };
-  if (tools && tools.length > 0) {
+
+  if (config.ai.model) body.model = config.ai.model;
+
+  const sendTools = tools && tools.length > 0 && (!isCustom || defaults.supportsTools !== false);
+  if (sendTools) {
     body.tools = tools.map((t) => ({
       type: "function",
       function: {
@@ -203,17 +241,9 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     }));
   }
 
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
+  const headers = openAIHeaders(provider, apiKey, defaults);
 
-  if (config.ai.provider === "openrouter") {
-    headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
-    headers["X-Title"] = "PortScope";
-  }
-
-  const { signal, cancel } = getSignal(options, 30000);
+  const { signal, cancel } = getSignal(options, isCustom ? 60000 : 30000);
   let res;
   try {
     res = await fetch(baseUrl, {
@@ -224,10 +254,16 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     });
   } catch (err) {
     if (err.name === "TimeoutError") {
+      const secs = isCustom ? 60 : 30;
       throw new Error(
-        `${config.ai.provider} API timed out after 30s. ` +
-        `The model "${config.ai.model}" may be slow — try again, or switch models with /models.`,
+        `${label} timed out after ${secs}s. ` +
+        (config.ai.model
+          ? `The model "${config.ai.model}" may be slow — try again, or switch models with /models.`
+          : `Try again, or check the endpoint URL with /endpoint.`),
       );
+    }
+    if (isCustom && (err.cause?.code === "ECONNREFUSED" || err.cause?.code === "ENOTFOUND")) {
+      throw new Error(`Cannot reach ${label} at ${baseUrl}. Check the URL with /endpoint.`);
     }
     throw err;
   } finally {
@@ -243,14 +279,22 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     try {
       const j = JSON.parse(err);
       if (j.error && j.error.message) parsedErr = j.error.message;
+      else if (typeof j.error === "string") parsedErr = j.error;
+      else if (j.message) parsedErr = j.message;
     } catch { }
 
     if (!parsedErr) parsedErr = `HTTP ${res.status}`;
 
+    if (isCustom && sendTools && looksLikeToolsUnsupported(res.status, parsedErr)) {
+      setEndpointCapability(provider, { tools: false });
+      if (PROVIDER_DEFAULTS[provider]) PROVIDER_DEFAULTS[provider].supportsTools = false;
+      return await sendOpenAI(config, apiKey, messages, [], systemPrompt, baseUrl, options);
+    }
+
     if (res.status === 502 || res.status === 503) {
       throw new Error(
-        `${config.ai.provider} is temporarily unavailable (${res.status}). ` +
-        `The model "${config.ai.model}" may be down — try again in a moment, or switch models with /models.`,
+        `${label} is temporarily unavailable (${res.status}). ` +
+        `Try again in a moment${config.ai.model ? `, or switch models with /models` : ""}.`,
       );
     }
 
@@ -258,14 +302,25 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
       throw new Error(`The model "${config.ai.model}" does not exist or your API key doesn't have access to it. Use /models to pick a valid model.`);
     }
 
-    if (res.status === 401 || parsedErr.toLowerCase().includes("invalid_api_key") || parsedErr.toLowerCase().includes("incorrect api key")) {
-      throw new Error(`Invalid ${config.ai.provider} API key. Check your ${config.ai.provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
+    if (res.status === 404 && isCustom) {
+      throw new Error(`${label} returned 404 for ${baseUrl}. The endpoint URL looks wrong — fix it with /endpoint.`);
     }
-    throw new Error(`${config.ai.provider} API error (${res.status}): ${parsedErr}`);
+
+    if (res.status === 401 || res.status === 403 || parsedErr.toLowerCase().includes("invalid_api_key") || parsedErr.toLowerCase().includes("incorrect api key")) {
+      if (isCustom) {
+        throw new Error(
+          apiKey && apiKey !== "local"
+            ? `${label} rejected the bearer token (${res.status}). Use /revoke to clear it, then /provider to re-enter.`
+            : `${label} requires authorization (${res.status}). Add a bearer token with /endpoint.`,
+        );
+      }
+      throw new Error(`Invalid ${provider} API key. Check your ${provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
+    }
+    throw new Error(`${label} API error (${res.status}): ${parsedErr}`);
   }
 
   const data = await res.json();
-  return parseOpenAIResponse(data);
+  return parseOpenAIResponse(data, label);
 }
 
 function toOpenAIMessages(messages) {
@@ -301,21 +356,28 @@ function toOpenAIMessages(messages) {
   return result;
 }
 
-function parseOpenAIResponse(data) {
-  const choice = data.choices[0];
-  const msg = choice.message;
-  const result = { text: msg.content || "", toolCalls: [], usage: null };
-  if (msg.tool_calls) {
+function parseOpenAIResponse(data, label = "provider") {
+  const choice = data?.choices?.[0];
+  if (!choice) {
+    throw new Error(
+      `${label} returned an unexpected response shape (no "choices"). ` +
+      `The endpoint may not be OpenAI-compatible: ${JSON.stringify(data).slice(0, 200)}`,
+    );
+  }
+  const msg = choice.message || {};
+  const result = { text: typeof msg.content === "string" ? msg.content : "", toolCalls: [], usage: null };
+  if (Array.isArray(msg.tool_calls)) {
     for (const tc of msg.tool_calls) {
-      result.toolCalls.push({
-        id: tc.id,
-        name: tc.function.name,
-        input: JSON.parse(tc.function.arguments),
-      });
+      if (!tc?.function?.name) continue;
+      let input = {};
+      try {
+        input = JSON.parse(tc.function.arguments || "{}");
+      } catch { /* endpoint emitted malformed args — call the tool with none */ }
+      result.toolCalls.push({ id: tc.id, name: tc.function.name, input });
     }
   }
   result.stopReason =
-    choice.finish_reason === "tool_calls" ? "tool_calls" : "stop";
+    choice.finish_reason === "tool_calls" || result.toolCalls.length > 0 ? "tool_calls" : "stop";
   if (data.usage) {
     result.usage = {
       inputTokens: data.usage.prompt_tokens || 0,
@@ -679,9 +741,13 @@ async function streamAnthropic(config, apiKey, messages, tools, systemPrompt, on
 
 
 async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl, onChunk, options = {}) {
-  const tokenKey = config.ai.provider === "openai" ? "max_completion_tokens" : "max_tokens";
+  const provider = config.ai.provider;
+  const defaults = PROVIDER_DEFAULTS[provider] || {};
+  const isCustom = defaults.isCustom === true;
+  const label = defaults.label || provider;
+
+  const tokenKey = provider === "openai" ? "max_completion_tokens" : "max_tokens";
   const body = {
-    model: config.ai.model,
     [tokenKey]: config.ai.maxTokens,
     stream: true,
     stream_options: { include_usage: true },
@@ -690,7 +756,10 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
       ...toOpenAIMessages(messages),
     ],
   };
-  if (tools && tools.length > 0) {
+  if (config.ai.model) body.model = config.ai.model;
+
+  const sendTools = tools && tools.length > 0 && (!isCustom || defaults.supportsTools !== false);
+  if (sendTools) {
     body.tools = tools.map((t) => ({
       type: "function",
       function: {
@@ -701,15 +770,7 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
     }));
   }
 
-  const headers = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  if (config.ai.provider === "openrouter") {
-    headers["HTTP-Referer"] = "https://github.com/neilblaze/portscope";
-    headers["X-Title"] = "PortScope";
-  }
+  const headers = openAIHeaders(provider, apiKey, defaults);
 
   const { signal, cancel } = getSignal(options, 60000);
   let res;
@@ -731,16 +792,30 @@ async function streamOpenAI(config, apiKey, messages, tools, systemPrompt, baseU
     try {
       const j = JSON.parse(err);
       if (j.error && j.error.message) parsedErr = j.error.message;
+      else if (typeof j.error === "string") parsedErr = j.error;
+      else if (j.message) parsedErr = j.message;
     } catch { }
+
+    if (isCustom) {
+      cancel();
+      if (sendTools && looksLikeToolsUnsupported(res.status, parsedErr)) {
+        setEndpointCapability(provider, { tools: false });
+        if (PROVIDER_DEFAULTS[provider]) PROVIDER_DEFAULTS[provider].supportsTools = false;
+      } else if (res.status === 400 || res.status === 422 || res.status === 501) {
+        setEndpointCapability(provider, { streaming: false });
+        if (PROVIDER_DEFAULTS[provider]) PROVIDER_DEFAULTS[provider].streaming = false;
+      }
+      return await sendMessage(config, apiKey, messages, tools, systemPrompt, options);
+    }
 
     if (res.status === 404 && parsedErr.toLowerCase().includes("does not exist")) {
       throw new Error(`The model "${config.ai.model}" does not exist or your API key doesn't have access to it. Use /models to pick a valid model.`);
     }
     if (res.status === 401 || parsedErr.toLowerCase().includes("invalid_api_key") || parsedErr.toLowerCase().includes("incorrect api key")) {
-      throw new Error(`Invalid ${config.ai.provider} API key. Check your ${config.ai.provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
+      throw new Error(`Invalid ${provider} API key. Check your ${provider}_API_KEY and if you want, use /revoke to clear it and restart.`);
     }
 
-    throw new Error(`${config.ai.provider} streaming error (${res.status}): ${parsedErr}`);
+    throw new Error(`${label} streaming error (${res.status}): ${parsedErr}`);
   }
 
   const result = { text: "", toolCalls: [], usage: null, stopReason: "stop" };
@@ -823,18 +898,19 @@ export async function sendMessageStream(config, apiKey, messages, tools, systemP
       case "anthropic":
         return await streamAnthropic(config, apiKey, messages, tools, systemPrompt, onChunk, options);
       case "openai":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openai.baseUrl, onChunk, options);
       case "openrouter":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.openrouter.baseUrl, onChunk, options);
       case "nvidia":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.nvidia.baseUrl, onChunk, options);
       case "cerebras":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.cerebras.baseUrl, onChunk, options);
       case "groq":
-        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS.groq.baseUrl, onChunk, options);
-      default:
-        // Gemini, Ollama: fall back to non-streaming
+        return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, PROVIDER_DEFAULTS[provider].baseUrl, onChunk, options);
+      default: {
+        const defaults = PROVIDER_DEFAULTS[provider];
+        if (defaults?.isCustom && defaults.streaming === true) {
+          return await streamOpenAI(config, apiKey, messages, tools, systemPrompt, defaults.baseUrl, onChunk, options);
+        }
+        // Gemini, Ollama, non-streaming custom endpoints
         return await sendMessage(config, apiKey, messages, tools, systemPrompt, options);
+      }
     }
   } catch (err) {
     if (err.name === "AbortError") throw err;

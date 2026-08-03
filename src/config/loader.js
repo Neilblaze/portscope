@@ -2,10 +2,10 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync, chmodSync } from "f
 import { join } from "path";
 import { homedir } from "os";
 import { DEFAULT_CONFIG, PROVIDER_DEFAULTS } from "./schema.js";
+import { registerCustomEndpoints } from "./custom-endpoints.js";
 
 let _config = null;
 
-/** Directory for persistent PortScope config (~/.portscope/) */
 const PORTSCOPE_HOME = join(homedir(), ".portscope");
 
 
@@ -19,6 +19,8 @@ export async function loadConfig() {
 
   loadDotenv(join(process.cwd(), ".env"));
   loadDotenv(join(PORTSCOPE_HOME, ".env"));
+
+  registerCustomEndpoints();
 
   const config = structuredClone(DEFAULT_CONFIG);
 
@@ -52,6 +54,11 @@ export async function loadConfig() {
     config.ai.provider = process.env.PORTSCOPE_AI_PROVIDER;
   }
 
+  if (!PROVIDER_DEFAULTS[config.ai.provider]) {
+    config.ai.provider = DEFAULT_CONFIG.ai.provider;
+    config.ai.model = null;
+  }
+
   const providerDefaults = PROVIDER_DEFAULTS[config.ai.provider];
   if (!config.ai.model && providerDefaults) {
     config.ai.model = providerDefaults.model;
@@ -62,7 +69,6 @@ export async function loadConfig() {
 }
 
 
-// Reset cached config — call after provider switch
 export function resetConfig() {
   _config = null;
 }
@@ -73,9 +79,10 @@ export function resetConfig() {
  * and switches the config to that provider automatically.
  */
 export function getApiKey(config) {
-  if (config.ai.provider === "ollama") return "local";
-
   const providerDefaults = PROVIDER_DEFAULTS[config.ai.provider];
+
+  if (providerDefaults && !providerDefaults.envKey) return "local";
+
   if (providerDefaults && providerDefaults.envKey) {
     const key = process.env[providerDefaults.envKey];
     if (key) return key;
@@ -87,6 +94,7 @@ export function getApiKey(config) {
     if (key) {
       config.ai.provider = id;
       config.ai.model = defaults.model;
+      if (defaults.isCustom) config.ai.customEndpointId = defaults.endpointId;
       return key;
     }
   }
@@ -96,9 +104,9 @@ export function getApiKey(config) {
 
 // Get the API key for a specific provider (may differ from configured one)
 export function getApiKeyForProvider(provider) {
-  if (provider === "ollama") return "local";
   const providerDefaults = PROVIDER_DEFAULTS[provider];
-  if (!providerDefaults || !providerDefaults.envKey) return null;
+  if (!providerDefaults) return null;
+  if (!providerDefaults.envKey) return "local";
   return process.env[providerDefaults.envKey] || null;
 }
 
@@ -185,7 +193,9 @@ export function persistProviderChoice(provider, model, ollamaEndpoint) {
     } catch { }
   }
   existing.provider = provider;
-  if (model) existing.model = model;
+  // `null` is meaningful: custom endpoints may pin their model server-side, and
+  // leaving the previous provider's model behind would send it to the new one.
+  if (model !== undefined) existing.model = model;
   if (ollamaEndpoint !== undefined) existing.ollamaEndpoint = ollamaEndpoint;
   writeFileSync(configPath, JSON.stringify(existing, null, 2) + "\n", { encoding: "utf8", mode: 0o600 });
   try { chmodSync(configPath, 0o600); } catch { }

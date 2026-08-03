@@ -10,7 +10,7 @@ import {
   exportConversation,
 } from "./history.js";
 import { staggerPrint, flashSuccess } from "../ui/animate.js";
-import { switchProvider, revokeApiKeyFlow, browseModels, printStatus } from "./provider-flow.js";
+import { switchProvider, revokeApiKeyFlow, browseModels, printStatus, manageEndpoints } from "./provider-flow.js";
 
 
 export async function handleSlashCommand(input, state, messages, rl) {
@@ -19,7 +19,7 @@ export async function handleSlashCommand(input, state, messages, rl) {
 
   switch (cmd) {
     case "help":
-      printSlashHelp();
+      await printSlashHelp();
       return;
 
     case "exit":
@@ -37,6 +37,11 @@ export async function handleSlashCommand(input, state, messages, rl) {
     case "provider":
     case "providers":
       await switchProvider(state, rl, messages);
+      return;
+
+    case "endpoint":
+    case "endpoints":
+      await manageEndpoints(state, rl, parts.slice(1), messages);
       return;
 
     case "revoke":
@@ -147,18 +152,17 @@ export async function handleSlashCommand(input, state, messages, rl) {
 
     default:
       console.log(chalk.yellow(`\n  Unknown command: /${cmd}`));
-      printSlashHelp();
+      await printSlashHelp();
       return;
   }
 }
 
-function printSlashHelp() {
+export async function printSlashHelp() {
   const lines = [
     "",
     "",
-    "",
     chalk.rgb(255, 140, 0).bold("  Direct Commands") + chalk.dim("  (no AI needed)"),
-    chalk.gray("  ───────────────────────────────────────────────────────❯"),
+    chalk.gray("  ───────────────────────────────────────────────────────────────❯"),
     `  ${chalk.cyan("<port>")}           Inspect a specific port`,
     `  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`,
     `  ${chalk.cyan("kill all")}         Kill all dev server ports`,
@@ -179,8 +183,9 @@ function printSlashHelp() {
     chalk.dim("        ml=ml/ai, ui=frontend"),
     "",
     chalk.rgb(255, 140, 0).bold("  AI & Config"),
-    chalk.gray("  ───────────────────────────────────────────────────────❯"),
+    chalk.gray("  ───────────────────────────────────────────────────────────────❯"),
     `  ${chalk.cyan("/provider")}        Switch AI provider & add API key`,
+    `  ${chalk.cyan("/endpoint")}        Add/manage custom OpenAI-compatible endpoints`,
     `  ${chalk.cyan("/revoke")}          Revoke a saved API key`,
     `  ${chalk.cyan("/models")}          Browse and select a model`,
     `  ${chalk.cyan("/model <name>")}    Set model directly`,
@@ -190,7 +195,7 @@ function printSlashHelp() {
     `  ${chalk.cyan("/clear")}           Reset conversation history`,
     "",
     chalk.rgb(255, 140, 0).bold("  History & Export"),
-    chalk.gray("  ───────────────────────────────────────────────────────❯"),
+    chalk.gray("  ───────────────────────────────────────────────────────────────❯"),
     `  ${chalk.cyan("/history")}         List previous conversations`,
     `  ${chalk.cyan("/history <n>")}     Preview a conversation`,
     `  ${chalk.cyan("/load <n>")}        Restore a previous conversation`,
@@ -202,7 +207,10 @@ function printSlashHelp() {
     "",
   ];
 
-  staggerPrint(lines).catch(() => {
+
+  try {
+    await staggerPrint(lines);
+  } catch {
     for (const l of lines) console.log(l);
-  });
+  }
 }

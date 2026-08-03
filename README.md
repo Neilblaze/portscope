@@ -6,7 +6,7 @@
 
 **A beautiful CLI tool to see & manage what's running on your ports ✨**
 
-[![npm version](https://img.shields.io/badge/npm-v1.8.5-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
+[![npm version](https://img.shields.io/badge/npm-v1.8.6-a088ff)](https://github.com/Neilblaze/portscope/pkgs/npm/portscope)
 [![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
 
@@ -76,7 +76,7 @@ Shows your port table and drops into an interactive prompt. From there you can:
 - **Type a port number** (e.g. `3000`) → inspect it
 - **Type a command** (e.g. `kill 3000`, `ps`, `clean`) → execute it
 - **Ask in natural language** (e.g. `"what's using the most CPU?"`) → AI answers and acts
-- **Use slash commands** (`/provider`, `/models`, `/help`) → configure AI
+- **Use slash commands** (`/provider`, `/endpoint`, `/models`, `/help`) → configure AI
 - **Fish-style Autocomplete** — Intelligent ghost-text suggestions appear as you type (press `→` to accept)
 
 Type `exit` or press `Ctrl+C` to quit.
@@ -287,6 +287,7 @@ Supported formats: `.png`, `.jpg`, `.jpeg` (max 10 MB per image). Paths can be a
 | **Cerebras** | `llama-4-scout-17b-16e-instruct` | curated list | `CEREBRAS_API_KEY` |
 | **Groq** | `llama-3.3-70b-versatile` | curated list | `GROQ_API_KEY` |
 | **Ollama (Local)** | `llama3` | ✔ local list | *none — runs locally* |
+| **Custom endpoint** | *endpoint's choice* | ✔ if `/models` exists | `PORTSCOPE_CUSTOM_<ID>_TOKEN` |
 
 ### Setup
 
@@ -297,11 +298,100 @@ For **Ollama**, no API key is needed — PortScope auto-detects the local server
 > [!NOTE]
 > Ollama provides cost-free, local AI chat using locally running models. Tool-calling (kill, inspect via AI) is not supported — use Ollama for conversational Q&A and cloud providers for full AI orchestration.
 
+### Custom Endpoints
+
+Point PortScope at **any OpenAI-compatible `/v1/chat/completions` server**, be it a self-hosted gateway, a LiteLLM/vLLM/LM Studio instance, a corporate proxy, or your own API. Add as many as you like -- each shows up as its own provider in `/provider`.
+
+```bash
+❯ /endpoint add
+
+  Add a Custom Endpoint
+  ─────────────────────────────────●
+  Endpoint URL: https://ai.example.com/v1/chat/completions
+  Display name [ai.example.com]: My Gateway
+  Authorization bearer token (blank = no auth): sk-my-secret-token
+  Model (blank = let the endpoint decide):
+  Does it support streaming (SSE)? [y/N]
+
+  Testing endpoint...
+   ✔  Endpoint responded successfully
+      Token: sk-my*******oken
+      Model: deepseek-v4-pro
+   ✔  Saved My Gateway (non-streaming)
+```
+
+They then appear in the `/provider` picker alongside the built-ins:
+
+```
+  Select a Provider
+  ─────────────────────────────────●
+  1  Anthropic ○
+  ...
+  8  Ollama (Local) (local)
+  ── Custom endpoints ──
+  9  My Gateway ✔  ai.example.com/v1/chat/completions
+  10  + Add a custom endpoint (OpenAI-compatible)
+  0  Exit
+```
+
+**What you're asked for**
+
+| Prompt | Required | Notes |
+|--------|:---:|-------|
+| Endpoint URL | ✔ | Normalized for you — `ai.example.com`, `…/v1` and `…/v1/chat/completions` all resolve to the same thing. Remote hosts default to `https`, `localhost`/private IPs to `http`. |
+| Display name | ○ | Defaults to the hostname. This is the label shown in `/provider` and `/status`. |
+| Bearer token | ○ | **Optional**. Sent as `Authorization: Bearer <token>`. Leave blank for unauthenticated endpoints — no header is sent at all. |
+| Model | ○ | **Optional**. Leave blank and PortScope omits `model` from the request body entirely, letting the endpoint pick. Auto-filled from `/v1/models` when that route exists. |
+| Streaming | ○ | **Defaults to off**. Custom endpoints are non-streaming unless you answer `y` here. |
+
+The endpoint is probed before saving (a `/models` GET, then a 1-token completion), so a bad URL or wrong token is caught immediately rather than on your first question.
+
+> Nothing else is added. PortScope sends a **stock, stateless payload** — no vendor-specific body fields ... so gateways that gate extra features behind opt-in flags (server-side memory, retrieval/web-search, etc.) stay at their defaults. Port and process questions are answered from your machine via tools, so those features aren't needed and aren't requested.
+
+**Graceful degradation** — if an endpoint returns an error indicating it doesn't understand `tools`, or can't stream, PortScope retries the request without that feature and remembers the answer in `~/.portscope/endpoints.json`. You never see the failure, and later turns skip the wasted round trip.
+
+**Streaming** — when you enable it, PortScope sends `stream: true` and consumes a standard SSE `chat.completion.chunk` sequence (role delta → content deltas → `finish_reason` → `[DONE]`), including tool calls. Gateways that generate non-streaming upstream and emit the whole answer as one chunk work fine — you just won't see it type out. Streaming output only renders in `--verbose` / `/verbose` mode.
+
+**Reachability** — `/usage` pings the endpoint's `/models` route; for endpoints without one it falls back to the conventional `/healthz` liveness route, then to the completions URL itself.
+
+**Managing them**
+
+```bash
+/endpoint            # list, then add / edit / remove / use
+/endpoint add        # jump straight to the add flow
+/endpoint list       # list only
+```
+
+Endpoint definitions live in `~/.portscope/endpoints.json` (mode `0600`); tokens live in `~/.portscope/.env` under `PORTSCOPE_CUSTOM_<ID>_TOKEN` and can be cleared with `/revoke`.
+
+```json
+{
+  "version": 1,
+  "endpoints": [
+    {
+      "id": "my-gateway",
+      "label": "My Gateway",
+      "baseUrl": "https://ai.example.com/v1/chat/completions",
+      "modelsUrl": "https://ai.example.com/v1/models",
+      "model": "deepseek-v4-pro",
+      "auth": true,
+      "streaming": false,
+      "tools": true,
+      "headers": { "X-Tenant": "acme" }
+    }
+  ]
+}
+```
+
+> [!TIP]
+> `headers` is only editable by hand — add any extra static headers your gateway needs (tenant ids, routing hints) and they're merged into every request, including model listing and `/usage` reachability checks.
+
 ### Slash Commands
 
 | Command | Description |
 |---------|-------------|
 | `/provider` | Switch AI provider and configure API key |
+| `/endpoint [add\|list]` | Add or manage custom OpenAI-compatible endpoints |
 | `/revoke [name]` | Revoke a saved API key (e.g., `/revoke openai` to bypass prompts) |
 | `/models` | Browse and select a model (live listing for OpenAI, Gemini, OpenRouter & NVIDIA NIM) |
 | `/model <name>` | Set model directly |
@@ -329,6 +419,8 @@ OPENROUTER_API_KEY=...
 NVIDIA_API_KEY=...
 CEREBRAS_API_KEY=...
 GROQ_API_KEY=...
+
+PORTSCOPE_CUSTOM_MY_GATEWAY_TOKEN=...
 ```
 
 Provider is selected interactively via `/provider` — no env var needed.
@@ -439,7 +531,7 @@ graph TB
         INTENT[Intent Classifier<br/>anti-injection · routing]
         CONVERSATION{{Conversation Manager<br/>message history · tool routing}}
         COMPACTION[Context Compaction<br/>sliding window]
-        CLIENT[Multi-Provider Client<br/>Anthropic · OpenAI · Gemini<br/>OpenRouter · NVIDIA · Cerebras<br/>Groq · Ollama]
+        CLIENT[Multi-Provider Client<br/>Anthropic · OpenAI · Gemini<br/>OpenRouter · NVIDIA · Cerebras<br/>Groq · Ollama · Custom endpoints]
         EXECUTOR[Tool Executor<br/>permission checks · execution]
         TOOLS[Tool Definitions<br/>11+ specialized actions]
         USAGE[Usage Tracking<br/>tokens · cost estimation]
@@ -461,6 +553,7 @@ graph TB
         SCHEMA[Provider Schema<br/>defaults · validation]
         SANITIZER[Data Sanitizer<br/>secrets redaction]
         PROVIDER[Provider Flow<br/>key management]
+        ENDPOINTS[Custom Endpoints<br/>OpenAI-compatible registry]
         MODELS[Model Discovery<br/>live fetching · caching]
         PRICING[Pricing Database<br/>llm-pricing.json]
         LEDGER[Kill History Ledger<br/>restart tracking]

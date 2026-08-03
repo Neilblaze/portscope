@@ -8,7 +8,7 @@ import { cleanCommand } from "./clean.js";
 import { logsCommand } from "./logs.js";
 import { watchCommand } from "./watch.js";
 import { pauseCommand, resumeCommand } from "./pause.js";
-import { handleSlashCommand, processConversation } from "../ai/conversation.js";
+import { handleSlashCommand, processConversation, printSlashHelp } from "../ai/conversation.js";
 import { generateConversationId, saveConversation } from "../ai/history.js";
 import { extractImages, toAnthropicImageContent, toOpenAIImageContent } from "../ai/image.js";
 import { classifyIntent } from "../ai/intent.js";
@@ -20,6 +20,7 @@ import { restartCommand } from "./restart.js";
 
 const SLASH_COMMANDS = [
   { name: "/provider", desc: "Switch AI provider" },
+  { name: "/endpoint", desc: "Custom OpenAI-compatible endpoints" },
   { name: "/revoke", desc: "Revoke a saved API key" },
   { name: "/models", desc: "Browse models" },
   { name: "/model", desc: "Set model" },
@@ -424,7 +425,7 @@ async function handleDirectCommand(input, rl) {
       return true;
 
     case "help":
-      printInteractiveHelp();
+      await printInteractiveHelp();
       return true;
 
     default:
@@ -491,50 +492,6 @@ async function animateSlashCommand(promptPrefix, input) {
   return true;
 }
 
-// NOTE: Maybe I'll add some more commands/options here.
 function printInteractiveHelp() {
-  console.log();
-  console.log(chalk.rgb(255, 140, 0).bold("  Direct Commands") + chalk.dim("  (no AI needed)"));
-  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
-  console.log(`  ${chalk.cyan("<port>")}           Inspect a specific port`);
-  console.log(`  ${chalk.cyan("kill <n>")}         Kill by port, PID, or range`);
-  console.log(`  ${chalk.cyan("kill all")}         Kill all dev server ports`);
-  console.log(`  ${chalk.cyan("pause <n>")}        Suspend a process (SIGSTOP)`);
-  console.log(`  ${chalk.cyan("resume <n>")}       Resume a paused process (SIGCONT)`);
-  console.log(`  ${chalk.cyan("restart <n>")}      Kill & relaunch a process by port`);
-  console.log(`  ${chalk.cyan("ps")}               Show running dev processes`);
-  console.log(`  ${chalk.cyan("list")}             Refresh port table`);
-  console.log(`  ${chalk.cyan("list --live")}      Auto-refresh port table (LIVE)`);
-  console.log(`  ${chalk.cyan("logs <n>")}         Tail log output`);
-  console.log(`  ${chalk.cyan("clean")}            Kill orphaned/zombie servers`);
-  console.log(`  ${chalk.cyan("watch")}            Monitor port changes (LIVE)`);
-  console.log(`  ${chalk.cyan("watch --ar")}       Auto-restart crashed ports`);
-  console.log(`  ${chalk.cyan("watch --fe")}       Watch any specific type of port`);
-  console.log(`  ${chalk.cyan("watch --fe,be")}    Watch frontend + backend`);
-  console.log();
-  console.log(chalk.dim("  Here, fe=frontend, be=backend, db=database, api=backend"));
-  console.log(chalk.dim("        ml=ml/ai, ui=frontend"));
-  console.log();
-  console.log(chalk.rgb(255, 140, 0).bold("  AI & Config"));
-  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
-  console.log(`  ${chalk.cyan("/provider")}        Switch AI provider & add API key`);
-  console.log(`  ${chalk.cyan("/revoke")}          Revoke a saved API key`);
-  console.log(`  ${chalk.cyan("/models")}          Browse and select a model`);
-  console.log(`  ${chalk.cyan("/model <name>")}    Set model directly`);
-  console.log(`  ${chalk.cyan("/status")}          Show current provider & model`);
-  console.log(`  ${chalk.cyan("/usage")}           Usage dashboard, context & telemetry`);
-  console.log(`  ${chalk.cyan("/verbose")}         Toggle verbose/streaming mode`);
-  console.log(`  ${chalk.cyan("/clear")}           Reset conversation history`);
-  console.log();
-  console.log(chalk.rgb(255, 140, 0).bold("  History & Export"));
-  console.log(chalk.gray("  ───────────────────────────────────────────────────────❯"));
-  console.log(`  ${chalk.cyan("/history")}         List previous conversations`);
-  console.log(`  ${chalk.cyan("/history <n>")}     Preview a conversation`);
-  console.log(`  ${chalk.cyan("/load <n>")}        Restore a previous conversation`);
-  console.log(`  ${chalk.cyan("/export [fmt]")}    Export as md, html, or txt`);
-  console.log();
-  console.log(chalk.dim("  Or just type naturally — e.g. \"show me what's using the most CPU\""));
-  console.log(chalk.dim("  Attach images: include a path like ~/screenshot.png in your query"));
-  console.log(chalk.dim("  Type exit to quit · Tab-complete slash commands with '/'"));
-  console.log();
+  return printSlashHelp();
 }

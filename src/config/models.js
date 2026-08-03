@@ -166,6 +166,7 @@ function cleanModelList(provider, models) {
  */
 export async function ensureModelDiscovered(provider, apiKey, model, ollamaEndpoint) {
   if (!model || provider === "ollama") return;
+  if (PROVIDER_DEFAULTS[provider]?.isCustom) return;
 
   const cacheKey = getCacheKey(provider, apiKey);
   const cache = loadCache();
@@ -201,6 +202,10 @@ export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint, for
   const defaults = PROVIDER_DEFAULTS[provider];
   if (!defaults) {
     return { models: [], error: `No model listing available for ${provider}` };
+  }
+
+  if (defaults.isCustom) {
+    return fetchCustomModels(provider, defaults, apiKey);
   }
 
   if (!apiKey) {
@@ -297,6 +302,150 @@ export async function fetchAvailableModels(provider, apiKey, ollamaEndpoint, for
 
 
 
+function customHeaders(defaults, apiKey) {
+  const headers = { "Content-Type": "application/json" };
+  if (apiKey && apiKey !== "local") headers.Authorization = `Bearer ${apiKey}`;
+  for (const [k, v] of Object.entries(defaults.extraHeaders || {})) {
+    if (typeof v === "string") headers[k] = v;
+  }
+  return headers;
+}
+
+/**
+ * List models for a user-defined OpenAI-compatible endpoint. Many pin a single
+ * model and expose no /models route — not an error, so the caller is told to
+ * set the model by hand instead.
+ */
+async function fetchCustomModels(provider, defaults, apiKey) {
+  if (!defaults.modelsUrl) {
+    return {
+      models: [],
+      error: `${defaults.label} has no model listing URL. Set one directly with /model <name>, or leave it unset to let the endpoint choose.`,
+    };
+  }
+
+  const cacheKey = getCacheKey(provider, apiKey);
+  const cache = loadCache();
+  const now = Date.now();
+  if (cache[cacheKey] && (now - cache[cacheKey].updatedAt) < CACHE_TTL) {
+    return { models: cache[cacheKey].models, error: null };
+  }
+
+  try {
+    const res = await fetch(defaults.modelsUrl, {
+      headers: customHeaders(defaults, apiKey),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) {
+        return { models: [], error: `${defaults.label} rejected the bearer token (${res.status})` };
+      }
+      return {
+        models: [],
+        error: `${defaults.label} has no usable /models route (${res.status}). Set the model with /model <name>.`,
+      };
+    }
+
+    const data = await res.json();
+    const rawModels = Array.isArray(data) ? data : (data.data || data.models || []);
+    const models = rawModels
+      .map((m) => {
+        const id = typeof m === "string" ? m : (m.id || m.name || m.model);
+        return id ? { id, name: (typeof m === "object" && m.name) || id } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    if (models.length === 0) {
+      return { models: [], error: `${defaults.label} returned no models. Set the model with /model <name>.` };
+    }
+
+    cache[cacheKey] = { updatedAt: now, models };
+    saveCache(cache);
+    return { models, error: null };
+  } catch (err) {
+    if (err.name === "TimeoutError") {
+      return { models: [], error: `Timed out connecting to ${defaults.label}` };
+    }
+    return { models: [], error: `Failed to list ${defaults.label} models: ${sanitizeError(err)}` };
+  }
+}
+
+
+/**
+ * Probe a custom endpoint: a cheap GET on /models when it has one, then a
+ * 1-token completion, which is the only route guaranteed to exist.
+ * @returns {Promise<{valid: boolean, error: string|null, model?: string|null}>}
+ */
+export async function probeCustomEndpoint({ baseUrl, modelsUrl, token, model, headers = {} }) {
+  const reqHeaders = { "Content-Type": "application/json" };
+  if (token) reqHeaders.Authorization = `Bearer ${token}`;
+  for (const [k, v] of Object.entries(headers)) {
+    if (typeof v === "string") reqHeaders[k] = v;
+  }
+
+  let discoveredModel = model || null;
+
+  if (modelsUrl) {
+    try {
+      const res = await fetch(modelsUrl, { headers: reqHeaders, signal: AbortSignal.timeout(10000) });
+      if (res.status === 401 || res.status === 403) {
+        return { valid: false, error: `Endpoint rejected the bearer token (${res.status})` };
+      }
+      if (res.ok && !discoveredModel) {
+        const data = await res.json().catch(() => null);
+        const list = Array.isArray(data) ? data : (data?.data || data?.models || []);
+        const first = list?.[0];
+        if (first) discoveredModel = typeof first === "string" ? first : (first.id || first.name || null);
+      }
+    } catch { /* fall through to the completion probe */ }
+  }
+
+  const body = { messages: [{ role: "user", content: "hi" }], max_tokens: 1 };
+  if (discoveredModel) body.model = discoveredModel;
+
+  try {
+    const res = await fetch(baseUrl, {
+      method: "POST",
+      headers: reqHeaders,
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20000),
+    });
+
+    if (res.status === 401 || res.status === 403) {
+      return {
+        valid: false,
+        error: token
+          ? `Endpoint rejected the bearer token (${res.status})`
+          : `Endpoint requires authorization (${res.status}) — add a bearer token`,
+      };
+    }
+    if (res.status === 404) {
+      return { valid: false, error: `404 Not Found at ${baseUrl} — check the URL` };
+    }
+    if (res.status >= 500) {
+      return { valid: false, error: `Endpoint returned ${res.status}` };
+    }
+
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data && !data.choices) {
+        return { valid: false, error: `Endpoint responded but is not OpenAI-compatible (no "choices" in the response)` };
+      }
+      if (data?.model && !discoveredModel) discoveredModel = data.model;
+    }
+
+    return { valid: true, error: null, model: discoveredModel };
+  } catch (err) {
+    if (err.name === "TimeoutError") return { valid: false, error: "Connection timed out" };
+    if (err.cause?.code === "ECONNREFUSED") return { valid: false, error: `Connection refused at ${baseUrl}` };
+    if (err.cause?.code === "ENOTFOUND") return { valid: false, error: `Host not found for ${baseUrl}` };
+    return { valid: false, error: sanitizeError(err) };
+  }
+}
+
+
 async function fetchOllamaModels(ollamaEndpoint) {
   const endpoint = ollamaEndpoint || "http://localhost:11434";
   const tagsUrl = `${endpoint}/api/tags`;
@@ -328,6 +477,16 @@ async function fetchOllamaModels(ollamaEndpoint) {
 export async function validateApiKey(provider, apiKey) {
   const defaults = PROVIDER_DEFAULTS[provider];
   if (!defaults) return { valid: false, error: "Unknown provider" };
+
+  if (defaults.isCustom) {
+    return probeCustomEndpoint({
+      baseUrl: defaults.baseUrl,
+      modelsUrl: defaults.modelsUrl,
+      token: apiKey && apiKey !== "local" ? apiKey : null,
+      model: defaults.model,
+      headers: defaults.extraHeaders,
+    });
+  }
 
   // Ollama: no key — just check if the server is reachable
   if (provider === "ollama") {

@@ -47,9 +47,9 @@ function isInjectionAttempt(input) {
 const SELF_HELP_COMMAND_NAMES = [
   "portscope",
   // Slash commands (with or without the leading /)
-  "/provider", "/revoke", "/models", "/model", "/status", "/usage",
+  "/provider", "/endpoint", "/endpoints", "/revoke", "/models", "/model", "/status", "/usage",
   "/verbose", "/clear", "/history", "/load", "/export", "/help", "/exit",
-  "provider", "revoke", "verbose",
+  "provider", "endpoint", "revoke", "verbose",
   // Direct REPL commands
   "kill", "pause", "resume", "restart", "watch", "inspect", "logs",
   "clean", "ps", "list", "chat",

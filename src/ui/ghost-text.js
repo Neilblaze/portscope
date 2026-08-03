@@ -12,6 +12,7 @@ const ANSI = {
 
 const SLASH_COMMANDS = [
   { name: "/provider", desc: "Switch AI provider & add API key" },
+  { name: "/endpoint", desc: "Add/manage custom OpenAI-compatible endpoints", args: "[add|list|edit|remove]" },
   { name: "/revoke", desc: "Revoke a saved API key" },
   { name: "/models", desc: "Browse and select a model" },
   { name: "/model", desc: "Set model directly", args: "<name>" },

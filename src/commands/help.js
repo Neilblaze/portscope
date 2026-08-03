@@ -89,6 +89,9 @@ export function helpCommand() {
     `    ${chalk.cyan("/provider")}   Switch AI provider & add API key`,
   );
   console.log(
+    `    ${chalk.cyan("/endpoint")}   Add a custom OpenAI-compatible endpoint`,
+  );
+  console.log(
     `    ${chalk.cyan("/models")}     Browse and select a model`,
   );
   console.log(

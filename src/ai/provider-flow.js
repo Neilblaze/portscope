@@ -1,11 +1,23 @@
 import chalk from "chalk";
-import { PROVIDER_DEFAULTS, PROVIDER_IDS } from "../config/schema.js";
+import { PROVIDER_DEFAULTS, PROVIDER_IDS, DEFAULT_CONFIG } from "../config/schema.js";
 import { getApiKeyForProvider, saveApiKey, resetConfig, persistProviderChoice, revokeApiKey } from "../config/loader.js";
-import { fetchAvailableModels, validateApiKey } from "../config/models.js";
+import { fetchAvailableModels, validateApiKey, probeCustomEndpoint } from "../config/models.js";
 import { maskApiKey } from "../config/mask.js";
 import { sanitizeError } from "../config/sanitize-error.js";
 import { resetUsage } from "./usage.js";
 import { generateConversationId } from "./history.js";
+import {
+  CUSTOM_PREFIX,
+  isCustomProvider,
+  endpointIdOf,
+  normalizeBaseUrl,
+  deriveModelsUrl,
+  loadCustomEndpoints,
+  upsertCustomEndpoint,
+  removeCustomEndpoint,
+  uniqueEndpointId,
+  registerCustomEndpoints,
+} from "../config/custom-endpoints.js";
 
 
 export function printChatHeader(state) {
@@ -31,11 +43,19 @@ export function printStatus(state) {
   console.log(chalk.cyan.bold("  Current Configuration"));
   console.log(chalk.gray("  ─────────────────────────────────●"));
   console.log(`  ${chalk.gray("Provider")}    ${chalk.white.bold(provider?.label || state.config.ai.provider)}`);
-  console.log(`  ${chalk.gray("Model")}       ${chalk.white.bold(state.config.ai.model || "not set")}`);
+  console.log(`  ${chalk.gray("Model")}       ${chalk.white.bold(state.config.ai.model || "endpoint default")}`);
+  if (provider?.isCustom) {
+    console.log(`  ${chalk.gray("Endpoint")}    ${chalk.white(provider.baseUrl)}`);
+    console.log(
+      `  ${chalk.gray("Mode")}        ${chalk.white(provider.streaming ? "streaming" : "non-streaming")}` +
+      chalk.dim(`  ·  tools: ${provider.supportsTools === false ? "off" : "on"}`),
+    );
+  }
   if (state.apiKey && state.apiKey !== "local") {
-    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✔")} ${chalk.dim(maskApiKey(state.apiKey))}`);
+    const keyLabel = provider?.isCustom ? "Token  " : "API Key";
+    console.log(`  ${chalk.gray(keyLabel)}     ${chalk.green("✔")} ${chalk.dim(maskApiKey(state.apiKey))}`);
   } else if (state.apiKey === "local") {
-    console.log(`  ${chalk.gray("API Key")}     ${chalk.green("✔ local")}`);
+    console.log(`  ${chalk.gray("API Key")}     ${chalk.green(provider?.isCustom ? "✔ no auth" : "✔ local")}`);
   } else {
     console.log(`  ${chalk.gray("API Key")}     ${chalk.red("✕ missing")}`);
   }
@@ -57,38 +77,100 @@ export async function switchProvider(state, rl, messages = []) {
     }
   }
 
+  registerCustomEndpoints();
+
   console.log();
   console.log(chalk.cyan.bold("  Select a Provider"));
   console.log(chalk.gray("  ─────────────────────────────────●"));
 
+  let printedCustomHeader = false;
   for (let i = 0; i < PROVIDER_IDS.length; i++) {
     const id = PROVIDER_IDS[i];
     const defaults = PROVIDER_DEFAULTS[id];
     const isCurrent = id === state.config.ai.provider;
     const marker = isCurrent ? chalk.cyan(" ◀ current") : "";
+
+    if (isCustomProvider(id) && !printedCustomHeader) {
+      printedCustomHeader = true;
+      console.log();
+      console.log(chalk.dim("  ── Custom endpoints ──"));
+    }
+
     let keyStatus;
-    if (id === "ollama") {
-      keyStatus = chalk.dim(" (local)");
+    if (!defaults.envKey) {
+      keyStatus = chalk.dim(id === "ollama" ? " (local)" : " (no auth)");
     } else {
-      const hasKey = !!getApiKeyForProvider(id);
+      const hasKey = getApiKeyForProvider(id) && getApiKeyForProvider(id) !== "local";
       keyStatus = hasKey ? chalk.green(" ✔") : chalk.dim(" ○");
     }
-    console.log(`  ${chalk.white.bold(i + 1)}  ${chalk.white(defaults.label)}${keyStatus}${marker}`);
+
+    const hint = isCustomProvider(id) ? chalk.dim(`  (${shortUrl(defaults.baseUrl)})`) : "";
+    console.log(`  ${chalk.white.bold(i + 1)}  ${chalk.white(defaults.label)}${keyStatus}${marker}${hint}`);
   }
+
+  const addIdx = PROVIDER_IDS.length + 1;
+  console.log(`  ${chalk.white.bold(addIdx)}  ${chalk.magenta("+ Add a custom endpoint")} ${chalk.dim("(OpenAI-compatible)")}`);
   console.log(`  ${chalk.dim("0")}  ${chalk.dim("Exit")}`);
   console.log();
 
-  const answer = await question(rl, chalk.yellow(`  Pick a provider (0-${PROVIDER_IDS.length}): `));
+  const answer = await question(rl, chalk.yellow(`  Pick a provider (0-${addIdx}): `));
   const idx = parseInt(answer, 10);
-  if (isNaN(idx) || idx < 1 || idx > PROVIDER_IDS.length) {
+  if (isNaN(idx) || idx < 1 || idx > addIdx) {
     if (idx !== 0) console.log(chalk.gray("  Cancelled.\n"));
     else console.log();
+    return;
+  }
+
+  if (idx === addIdx) {
+    const newProvider = await addCustomEndpointFlow(state, rl);
+    if (newProvider) await activateProvider(state, rl, newProvider, messages);
     return;
   }
 
   const provider = PROVIDER_IDS[idx - 1];
   const defaults = PROVIDER_DEFAULTS[provider];
   let apiKey = getApiKeyForProvider(provider);
+
+  if (isCustomProvider(provider)) {
+    console.log();
+    console.log(`  ${chalk.gray("Endpoint")}  ${chalk.white(defaults.baseUrl)}`);
+    console.log(
+      `  ${chalk.gray("Mode")}      ${chalk.white(defaults.streaming ? "streaming" : "non-streaming")}` +
+      chalk.dim(`  ·  tools: ${defaults.supportsTools === false ? "off" : "on"}`),
+    );
+
+    if (defaults.envKey && (!apiKey || apiKey === "local")) {
+      console.log();
+      const token = await question(rl, chalk.yellow(`  Paste the bearer token for ${defaults.label} (blank to skip): `));
+      if (token.trim()) {
+        process.stdout.write(chalk.gray("  Verifying..."));
+        const probe = await probeCustomEndpoint({
+          baseUrl: defaults.baseUrl,
+          modelsUrl: defaults.modelsUrl,
+          token: token.trim(),
+          model: defaults.model,
+          headers: defaults.extraHeaders,
+        });
+        process.stdout.write("\r" + " ".repeat(40) + "\r");
+        if (!probe.valid) {
+          console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(`${probe.error}\n`)}`);
+          return;
+        }
+        saveApiKey(provider, token.trim());
+        apiKey = token.trim();
+        console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green("Token saved to ~/.portscope/.env")}`);
+      } else {
+        console.log(chalk.gray("  Continuing without a token."));
+        apiKey = "local";
+      }
+    } else if (apiKey && apiKey !== "local") {
+      console.log(`  ${chalk.gray("Token")}     ${chalk.green("✔")} ${chalk.dim(maskApiKey(apiKey))}`);
+    }
+    console.log();
+
+    await activateProvider(state, rl, provider, messages, { skipBrowsePrompt: !defaults.modelsUrl });
+    return;
+  }
 
   if (provider === "ollama") {
     const defaultEndpoint = "http://localhost:11434";
@@ -164,9 +246,17 @@ export async function switchProvider(state, rl, messages = []) {
     console.log();
   }
 
+  await activateProvider(state, rl, provider, messages);
+}
+
+
+async function activateProvider(state, rl, provider, messages = [], opts = {}) {
+  const defaults = PROVIDER_DEFAULTS[provider];
+  if (!defaults) return;
+
   state.config.ai.provider = provider;
   state.config.ai.model = defaults.model;
-  state.apiKey = apiKey;
+  state.apiKey = getApiKeyForProvider(provider);
   resetConfig();
   persistProviderChoice(provider, defaults.model, provider === "ollama" ? state.config.ai.ollamaEndpoint : undefined);
 
@@ -180,10 +270,10 @@ export async function switchProvider(state, rl, messages = []) {
 
   console.log(
     `  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Switched to ${chalk.bold(defaults.label)}`)}` +
-    (defaults.model ? chalk.gray(` (${defaults.model})`) : ""),
+    (defaults.model ? chalk.gray(` (${defaults.model})`) : chalk.dim(" (endpoint default model)")),
   );
 
-  if (defaults.modelsUrl) {
+  if (defaults.modelsUrl && !opts.skipBrowsePrompt) {
     console.log();
     const browse = await question(rl, chalk.yellow("  Browse available models? [y/N] "));
     if (browse.toLowerCase() === "y") {
@@ -194,24 +284,249 @@ export async function switchProvider(state, rl, messages = []) {
   console.log();
 }
 
+
+function shortUrl(url) {
+  try {
+    const u = new URL(url);
+    return u.host + (u.pathname === "/" ? "" : u.pathname);
+  } catch {
+    return url;
+  }
+}
+
+
+/**
+ * Interactive setup for a user-defined OpenAI-compatible endpoint.
+ * @returns {Promise<string|null>} the provider id (`custom:<slug>`), or null if cancelled
+ */
+export async function addCustomEndpointFlow(state, rl, existing = null) {
+  console.log();
+  console.log(chalk.cyan.bold(existing ? "  Edit Custom Endpoint" : "  Add a Custom Endpoint"));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
+  console.log(chalk.dim("  Any OpenAI-compatible /v1/chat/completions server works."));
+  console.log(chalk.dim("  Example: https://ai.example.com/v1/chat/completions"));
+  console.log();
+
+  const urlPrompt = existing
+    ? chalk.yellow(`  Endpoint URL [${existing.baseUrl}]: `)
+    : chalk.yellow("  Endpoint URL: ");
+  const urlInput = (await question(rl, urlPrompt)).trim();
+  const baseUrl = normalizeBaseUrl(urlInput || existing?.baseUrl);
+  if (!baseUrl) {
+    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red("That doesn't look like a valid URL.\n")}`);
+    return null;
+  }
+  if (baseUrl !== (urlInput || existing?.baseUrl)) {
+    console.log(chalk.dim(`      → ${baseUrl}`));
+  }
+
+  const defaultLabel = existing?.label || new URL(baseUrl).host;
+  const labelInput = (await question(rl, chalk.yellow(`  Display name [${defaultLabel}]: `))).trim();
+  const label = labelInput || defaultLabel;
+
+  const tokenInput = (await question(
+    rl,
+    chalk.yellow(`  Authorization bearer token ${chalk.dim("(blank = no auth)")}: `),
+  )).trim();
+  const token = tokenInput || null;
+
+  const modelHint = existing?.model ? ` [${existing.model}]` : chalk.dim(" (blank = let the endpoint decide)");
+  const modelInput = (await question(rl, chalk.yellow(`  Model${modelHint}: `))).trim();
+  const model = modelInput || existing?.model || null;
+
+  const streamAnswer = (await question(
+    rl,
+    chalk.yellow(`  Does it support streaming (SSE)? [y/N] `),
+  )).trim().toLowerCase();
+  const streaming = streamAnswer === "y" || streamAnswer === "yes";
+
+  const modelsUrl = deriveModelsUrl(baseUrl);
+
+  process.stdout.write(chalk.gray("  Testing endpoint..."));
+  const probe = await probeCustomEndpoint({ baseUrl, modelsUrl, token, model });
+  process.stdout.write("\r" + " ".repeat(40) + "\r");
+
+  if (!probe.valid) {
+    console.log(`  ${chalk.bgRed.white.bold(" ✕ ")} ${chalk.red(probe.error || "Endpoint check failed")}`);
+    console.log();
+    const save = (await question(rl, chalk.yellow("  Save it anyway? [y/N] "))).trim().toLowerCase();
+    if (save !== "y") {
+      console.log(chalk.gray("  Cancelled.\n"));
+      return null;
+    }
+  } else {
+    console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green("Endpoint responded successfully")}`);
+    if (token) console.log(chalk.dim(`      Token: ${maskApiKey(token)}`));
+    if (probe.model && !model) console.log(chalk.dim(`      Model: ${probe.model}`));
+  }
+
+  const id = existing?.id || uniqueEndpointId(label);
+  const endpoint = {
+    id,
+    label,
+    baseUrl,
+    modelsUrl,
+    model: model || probe.model || null,
+    auth: !!token || (existing?.auth === true && !tokenInput),
+    streaming,
+    tools: existing?.tools !== false,
+    headers: existing?.headers || {},
+  };
+
+  const providerId = upsertCustomEndpoint(endpoint);
+
+  if (token) {
+    saveApiKey(providerId, token);
+  }
+
+  console.log(
+    `  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Saved ${chalk.bold(label)}`)} ` +
+    chalk.dim(`(${streaming ? "streaming" : "non-streaming"})`),
+  );
+  console.log(chalk.gray(`      Config: ~/.portscope/endpoints.json`));
+  console.log();
+
+  return providerId;
+}
+
+
+export async function manageEndpoints(state, rl, args = [], messages = []) {
+  const sub = (args[0] || "").toLowerCase();
+  registerCustomEndpoints();
+
+  if (sub === "add" || sub === "new") {
+    const providerId = await addCustomEndpointFlow(state, rl);
+    if (providerId) {
+      const use = (await question(rl, chalk.yellow("  Switch to it now? [Y/n] "))).trim().toLowerCase();
+      if (use !== "n") await activateProvider(state, rl, providerId, messages, { skipBrowsePrompt: true });
+      else persistProviderChoice(state.config.ai.provider, state.config.ai.model);
+    }
+    return;
+  }
+
+  const endpoints = loadCustomEndpoints();
+
+  if (endpoints.length === 0) {
+    console.log();
+    console.log(chalk.yellow("  No custom endpoints configured yet."));
+    console.log(chalk.dim("  Run /endpoint add — or pick “+ Add a custom endpoint” in /provider.\n"));
+    if (sub === "remove" || sub === "rm" || sub === "edit") return;
+    const add = (await question(rl, chalk.yellow("  Add one now? [Y/n] "))).trim().toLowerCase();
+    if (add === "n") return;
+    const providerId = await addCustomEndpointFlow(state, rl);
+    if (providerId) await activateProvider(state, rl, providerId, messages, { skipBrowsePrompt: true });
+    return;
+  }
+
+  console.log();
+  console.log(chalk.cyan.bold(`  Custom Endpoints (${endpoints.length})`));
+  console.log(chalk.gray("  ─────────────────────────────────●"));
+  for (let i = 0; i < endpoints.length; i++) {
+    const ep = endpoints[i];
+    const providerId = CUSTOM_PREFIX + ep.id;
+    const isCurrent = providerId === state.config.ai.provider;
+    const key = getApiKeyForProvider(providerId);
+    const auth = ep.auth === false || !key || key === "local"
+      ? chalk.dim("no auth")
+      : chalk.green(`bearer ${maskApiKey(key)}`);
+    console.log(
+      `  ${chalk.white.bold(i + 1)}  ${chalk.white(ep.label)}${isCurrent ? chalk.cyan(" ◀ current") : ""}`,
+    );
+    console.log(`     ${chalk.dim(ep.baseUrl)}`);
+    console.log(
+      `     ${chalk.dim(`model: ${ep.model || "endpoint default"} · ${ep.streaming ? "streaming" : "non-streaming"} · tools: ${ep.tools === false ? "off" : "on"} · `)}${auth}`,
+    );
+  }
+  console.log();
+
+  if (sub === "list" || sub === "ls") return;
+
+  const action = (await question(
+    rl,
+    chalk.yellow("  [a]dd, [e]dit <n>, [r]emove <n>, [u]se <n>, or Enter to exit: "),
+  )).trim().toLowerCase();
+
+  if (!action) {
+    console.log();
+    return;
+  }
+
+  const [verb, numArg] = action.split(/\s+/);
+  const n = parseInt(numArg, 10);
+  const target = !isNaN(n) && n >= 1 && n <= endpoints.length ? endpoints[n - 1] : null;
+
+  if (verb === "a" || verb === "add") {
+    const providerId = await addCustomEndpointFlow(state, rl);
+    if (providerId) await activateProvider(state, rl, providerId, messages, { skipBrowsePrompt: true });
+    return;
+  }
+
+  if (!target) {
+    console.log(chalk.red(`\n  Pick a number between 1 and ${endpoints.length}. e.g. "r 1"\n`));
+    return;
+  }
+
+  if (verb === "e" || verb === "edit") {
+    const providerId = await addCustomEndpointFlow(state, rl, target);
+    if (providerId && providerId === state.config.ai.provider) {
+      await activateProvider(state, rl, providerId, messages, { skipBrowsePrompt: true });
+    }
+    return;
+  }
+
+  if (verb === "u" || verb === "use") {
+    await activateProvider(state, rl, CUSTOM_PREFIX + target.id, messages, { skipBrowsePrompt: true });
+    return;
+  }
+
+  if (verb === "r" || verb === "rm" || verb === "remove" || verb === "delete") {
+    const confirm = (await question(
+      rl,
+      chalk.yellow(`  Remove ${chalk.bold(target.label)}? [y/N] `),
+    )).trim().toLowerCase();
+    if (confirm !== "y") {
+      console.log(chalk.gray("  Cancelled.\n"));
+      return;
+    }
+    const providerId = CUSTOM_PREFIX + target.id;
+    revokeApiKey(providerId);
+    removeCustomEndpoint(target.id);
+    console.log(`  ${chalk.bgGreen.black.bold(" ✔ ")} ${chalk.green(`Removed ${target.label}\n`)}`);
+
+    if (state.config.ai.provider === providerId) {
+      state.config.ai.provider = DEFAULT_CONFIG.ai.provider;
+      state.config.ai.model = PROVIDER_DEFAULTS[DEFAULT_CONFIG.ai.provider].model;
+      state.apiKey = getApiKeyForProvider(state.config.ai.provider);
+      persistProviderChoice(state.config.ai.provider, state.config.ai.model);
+      resetConfig();
+      console.log(chalk.yellow("  That was your active provider — pick a new one.\n"));
+      await switchProvider(state, rl, []);
+    }
+    return;
+  }
+
+  console.log(chalk.gray("  Cancelled.\n"));
+}
+
 export async function revokeApiKeyFlow(state, rl, providerArg) {
   const configuredProviders = [];
   for (const id of PROVIDER_IDS) {
-    if (id === "ollama") continue;
+    // Providers with no envKey hold no credential to revoke.
+    if (!PROVIDER_DEFAULTS[id]?.envKey) continue;
     const key = getApiKeyForProvider(id);
-    if (key) {
+    if (key && key !== "local") {
       configuredProviders.push(id);
     }
   }
 
   if (providerArg) {
     const targetProvider = providerArg.toLowerCase();
-    
+
     if (!PROVIDER_IDS.includes(targetProvider)) {
       console.log(chalk.red(`\n  Unknown provider: "${targetProvider}"\n`));
       return;
     }
-    
+
     if (!configuredProviders.includes(targetProvider)) {
       console.log(chalk.yellow(`\n  No API key found for ${PROVIDER_DEFAULTS[targetProvider].label}.\n`));
       return;

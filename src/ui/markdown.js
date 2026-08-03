@@ -21,6 +21,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
   const output = [];
   let i = 0;
   let isFirstOutputLine = true;
+  let listIndent = "";
 
   const getPrefixes = () => {
     const pad = " ".repeat(indentLevel);
@@ -52,6 +53,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
       }
       const p = getPrefixes();
       output.push(renderTable(tableLines, p.first, p.sub));
+      listIndent = "";
       continue;
     }
 
@@ -59,6 +61,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
     if (/^\s*([-*_])\1{2,}\s*$/.test(line)) {
       const p = getPrefixes();
       output.push(p.first + chalk.gray("─────────────────────────────────────────"));
+      listIndent = "";
       i++;
       continue;
     }
@@ -72,6 +75,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
       const prefix = p.first + chalk.yellow("💡 ");
       const subIndent = p.sub + "   ";
       output.push(wrapAnsi(chalk.italic(rendered), cols - p.widthAdjust - 3, prefix, subIndent));
+      listIndent = "";
       i++;
       continue;
     }
@@ -87,6 +91,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
       } else {
         output.push(wrapAnsi(chalk.bold(content), cols - p.widthAdjust, p.first, p.sub));
       }
+      listIndent = " ".repeat(leadingEmojiWidth(headingMatch[2]));
       i++;
       continue;
     }
@@ -95,7 +100,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
     const ulMatch = line.match(/^(\s*)[-*]\s+(.*)$/);
     if (ulMatch) {
       const p = getPrefixes();
-      const indent = ulMatch[1] || "";
+      const indent = listIndent + (ulMatch[1] || "");
       const prefix = p.first + indent + chalk.gray("• ");
       const rendered = renderInline(ulMatch[2], inlineOpts);
       const cols = process.stdout.columns || 80;
@@ -109,7 +114,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
     const olMatch = line.match(/^(\s*)\d+[.)]\s+(.*)$/);
     if (olMatch) {
       const p = getPrefixes();
-      const indent = olMatch[1] || "";
+      const indent = listIndent + (olMatch[1] || "");
       const num = line.match(/^(\s*)(\d+)/)[2];
       const prefix = p.first + indent + chalk.gray(`${num}. `);
       const rendered = renderInline(olMatch[2], inlineOpts);
@@ -126,6 +131,7 @@ export function renderMarkdown(text, asTree = false, indentLevel = 0) {
       const rendered = renderInline(line, inlineOpts);
       const cols = process.stdout.columns || 80;
       output.push(wrapAnsi(rendered, cols - p.widthAdjust, p.first, p.sub));
+      listIndent = " ".repeat(leadingEmojiWidth(line));
     } else {
       output.push(asTree && !isFirstOutputLine ? "      " : "");
     }
@@ -174,6 +180,11 @@ function renderInline(text, { highlightPorts = false } = {}) {
   // Strikethrough ~~text~~
   result = result.replace(/~~([^~]+)~~/g, (_, t) => chalk.strikethrough(t));
 
+  result = result.replace(/●\s*(healthy|orphaned|zombie|unknown)\b/gi, (_, word) => {
+    const color = { healthy: chalk.green, orphaned: chalk.yellow, zombie: chalk.red }[word.toLowerCase()] || chalk.gray;
+    return color("●") + " " + color(word);
+  });
+
   result = result.replace(/(?<!-)\b([Nn]ormal|[Ll]ow)\b(?!-)/g, (match) => chalk.green(match));
   result = result.replace(/(?<!-)\b([Mm]oderate)\b(?!-)/g, (match) => chalk.yellow(match));
   result = result.replace(/(?<!-)\b([Hh]igh|[Cc]ritical)\b(?!-)/g, (match) => chalk.rgb(255, 80, 0)(match));
@@ -183,6 +194,17 @@ function renderInline(text, { highlightPorts = false } = {}) {
   result = result.replace(/\x00PORT(\d+)\x00/g, (_, idx) => portSpans[parseInt(idx, 10)]);
 
   return result;
+}
+
+// Extras 
+function leadingEmojiWidth(line) {
+  const m = String(line).match(
+    /^(\s*)((?:\p{Extended_Pictographic}[️\u{1F3FB}-\u{1F3FF}]?)(?:‍\p{Extended_Pictographic}[️\u{1F3FB}-\u{1F3FF}]?)*)(\s+)(?=\S)/u,
+  );
+  if (!m) return 0;
+  const [, lead, cluster, gap] = m;
+  const isWide = cluster.includes("️") || [...cluster].some((c) => c.codePointAt(0) > 0xFFFF);
+  return lead.length + (isWide ? 2 : 1) + gap.length;
 }
 
 function isTableRow(line) {

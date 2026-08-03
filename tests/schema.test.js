@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { PROVIDER_DEFAULTS, PROVIDER_IDS, DEFAULT_CONFIG } from "../src/config/schema.js";
+import { PROVIDER_DEFAULTS, PROVIDER_IDS, BUILTIN_PROVIDER_IDS, DEFAULT_CONFIG } from "../src/config/schema.js";
 
 describe("PROVIDER_DEFAULTS", () => {
   it("has entries for all PROVIDER_IDS", () => {
@@ -9,8 +9,8 @@ describe("PROVIDER_DEFAULTS", () => {
     }
   });
 
-  it("each provider has required fields", () => {
-    for (const id of PROVIDER_IDS) {
+  it("each built-in provider has required fields", () => {
+    for (const id of BUILTIN_PROVIDER_IDS) {
       const p = PROVIDER_DEFAULTS[id];
       assert.ok(p.model, `${id} missing model`);
       assert.ok(p.baseUrl, `${id} missing baseUrl`);
@@ -19,7 +19,7 @@ describe("PROVIDER_DEFAULTS", () => {
   });
 
   it("cloud providers have envKey, Ollama does not", () => {
-    const cloudProviders = PROVIDER_IDS.filter((id) => id !== "ollama");
+    const cloudProviders = BUILTIN_PROVIDER_IDS.filter((id) => id !== "ollama");
     for (const id of cloudProviders) {
       assert.ok(PROVIDER_DEFAULTS[id].envKey, `${id} should have envKey`);
     }
@@ -33,6 +33,10 @@ describe("PROVIDER_DEFAULTS", () => {
 });
 
 describe("PROVIDER_IDS", () => {
+  it("starts out as the built-in list", () => {
+    assert.deepEqual(PROVIDER_IDS, [...BUILTIN_PROVIDER_IDS]);
+  });
+
   it("includes all expected providers", () => {
     assert.ok(PROVIDER_IDS.includes("anthropic"));
     assert.ok(PROVIDER_IDS.includes("openai"));
@@ -44,8 +48,8 @@ describe("PROVIDER_IDS", () => {
     assert.ok(PROVIDER_IDS.includes("ollama"));
   });
 
-  it("has exactly 8 providers", () => {
-    assert.equal(PROVIDER_IDS.length, 8);
+  it("has exactly 8 built-in providers", () => {
+    assert.equal(BUILTIN_PROVIDER_IDS.length, 8);
   });
 });
 

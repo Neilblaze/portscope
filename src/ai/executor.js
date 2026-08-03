@@ -342,6 +342,13 @@ export async function executeTool(toolName, input, rl, options = { headless: fal
   }
 }
 
+const STATUS_CELLS = {
+  healthy: "● healthy",
+  orphaned: "● orphaned",
+  zombie: "● zombie",
+  unknown: "● unknown",
+};
+
 function simplifyPort(p, detailed = false) {
   const result = {
     port: p.port,
@@ -349,7 +356,7 @@ function simplifyPort(p, detailed = false) {
     process: p.processName,
     project: p.projectName,
     framework: p.framework,
-    status: p.status,
+    status: STATUS_CELLS[p.status] || STATUS_CELLS.unknown,
     uptime: p.uptime,
     memory: p.memory,
   };

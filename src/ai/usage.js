@@ -133,9 +133,9 @@ for (const [key, info] of Object.entries(litellm)) {
  */
 export function trackUsage(provider, model, usage, latencyMs) {
   syncMetrics(provider, model);
-  if (!usage) return;
-  const input = usage.inputTokens || 0;
-  const output = usage.outputTokens || 0;
+
+  const input = usage?.inputTokens || 0;
+  const output = usage?.outputTokens || 0;
   session.inputTokens += input;
   session.outputTokens += output;
   session.apiCalls += 1;
@@ -417,6 +417,7 @@ export async function printUsage(state) {
 }
 
 import { PROVIDER_DEFAULTS } from "../config/schema.js";
+import { deriveHealthUrl } from "../config/custom-endpoints.js";
 
 async function measurePing(state, provider) {
   const defaults = PROVIDER_DEFAULTS[provider];
@@ -428,7 +429,15 @@ async function measurePing(state, provider) {
 
   let url;
   let headers = {};
-  if (provider === "ollama") {
+  if (defaults?.isCustom) {
+    url = defaults.modelsUrl || deriveHealthUrl(defaults.baseUrl) || defaults.baseUrl;
+    if (state.apiKey && state.apiKey !== "local") {
+      headers = { Authorization: `Bearer ${state.apiKey}` };
+    }
+    for (const [k, v] of Object.entries(defaults.extraHeaders || {})) {
+      if (typeof v === "string") headers[k] = v;
+    }
+  } else if (provider === "ollama") {
     url = (state.config.ai.ollamaEndpoint || "http://localhost:11434") + "/api/tags";
   } else if (provider === "gemini") {
     url = `${defaults.baseUrl}/models?key=${state.apiKey}`;
@@ -456,7 +465,10 @@ async function measurePing(state, provider) {
     const res = await fetch(url, fetchOpts);
     const elapsed = Date.now() - start;
     let icon;
-    if (res.ok || res.status === 400) icon = chalk.green("✔");
+    // 400/404/405 from a custom endpoint still proves the host answered.
+    const reachable = res.ok || res.status === 400 ||
+      (defaults?.isCustom && (res.status === 404 || res.status === 405));
+    if (reachable) icon = chalk.green("✔");
     else if (res.status === 401 || res.status === 403) return { error: "auth error", elapsed, label };
     else return { error: `HTTP ${res.status}`, elapsed, label };
 
