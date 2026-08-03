@@ -621,7 +621,7 @@ export async function browseModels(state, rl) {
   const pageSize = 20;
   const totalPages = Math.ceil(models.length / pageSize);
 
-  console.log(chalk.cyan.bold(`\n  Available Models (${models.length})`));
+  console.log(chalk.yellow.bold(`\n  Available Models (${models.length})`));
   console.log(chalk.gray("  ─────────────────────────────────●"));
 
   const displayPage = (page) => {
