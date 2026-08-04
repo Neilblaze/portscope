@@ -319,7 +319,16 @@ async function sendOpenAI(config, apiKey, messages, tools, systemPrompt, baseUrl
     throw new Error(`${label} API error (${res.status}): ${parsedErr}`);
   }
 
-  const data = await res.json();
+  const raw = await res.text();
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `${label} returned a 200 that isn't JSON. The endpoint may not be OpenAI-compatible: ` +
+      raw.replace(/<[^>]*>/g, " ").trim().slice(0, 200),
+    );
+  }
   return parseOpenAIResponse(data, label);
 }
 

@@ -320,19 +320,8 @@ Point PortScope at **any OpenAI-compatible `/v1/chat/completions` server**, be i
    ✔  Saved My Gateway (non-streaming)
 ```
 
-They then appear in the `/provider` picker alongside the built-ins:
+They then appear in the `/provider` picker alongside the built-ins.
 
-```
-  Select a Provider
-  ─────────────────────────────────●
-  1  Anthropic ○
-  ...
-  8  Ollama (Local) (local)
-  ── Custom endpoints ──
-  9  My Gateway ✔  ai.example.com/v1/chat/completions
-  10  + Add a custom endpoint (OpenAI-compatible)
-  0  Exit
-```
 
 **What you're asked for**
 

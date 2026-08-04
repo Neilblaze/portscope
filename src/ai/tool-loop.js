@@ -194,16 +194,29 @@ export async function processConversation(config, apiKey, messages, rl, options 
   let tookAction = false;
   let hasPromptedDestructive = false;
 
+  let pendingStats = null;
+
+  const showStats = (res, startedAt, indentLevel) => {
+    if (!verbose || !res.usage) return;
+    const { inputTokens: inT, outputTokens: outT } = res.usage;
+    const sec = (Date.now() - startedAt) / 1000;
+    const tps = sec > 0 ? (outT / sec).toFixed(1) : 0;
+    const indentStr = res.text ? " ".repeat(6 + indentLevel) : "  ";
+    const line = chalk.dim(`${indentStr}↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${sec.toFixed(1)}s · ${tps} tok/s`);
+    if (res.text && !res._streamRendered) pendingStats = line;
+    else console.log(line);
+  };
+
+  const flushStats = () => {
+    if (pendingStats) {
+      console.log(pendingStats);
+      pendingStats = null;
+    }
+  };
+
   let response = await callAIWithSpinner(config, apiKey, messages, verbose, t0, hasPromptedDestructive ? 4 : 0, fetchOptions);
   trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t0);
-
-  if (verbose && response.usage) {
-    const { inputTokens: inT, outputTokens: outT } = response.usage;
-    const sec = (Date.now() - t0) / 1000;
-    const tps = sec > 0 ? (outT / sec).toFixed(1) : 0;
-    const indentStr = response.text ? "      " : "  ";
-    console.log(chalk.dim(`${indentStr}↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${sec.toFixed(1)}s · ${tps} tok/s`));
-  }
+  showStats(response, t0, hasPromptedDestructive ? 4 : 0);
 
   // Tool calling loop — AI can make multiple sequential rounds of tool calls
   while (response.toolCalls && response.toolCalls.length > 0) {
@@ -217,6 +230,7 @@ export async function processConversation(config, apiKey, messages, rl, options 
 
     if (response.text && !response._streamRendered) {
       console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0));
+      flushStats();
     }
 
     messages.push({
@@ -252,18 +266,14 @@ export async function processConversation(config, apiKey, messages, rl, options 
     response = await callAIWithSpinner(config, apiKey, messages, verbose, t1, currentIndent, fetchOptions);
     trackUsage(config.ai.provider, config.ai.model, response.usage, Date.now() - t1);
 
-    if (verbose && response.usage) {
-      const { inputTokens: inT, outputTokens: outT } = response.usage;
-      const sec = (Date.now() - t1) / 1000;
-      const tps = sec > 0 ? (outT / sec).toFixed(1) : 0;
-      const indentStr = response.text ? " ".repeat(6 + currentIndent) : "  ";
-      console.log(chalk.dim(`${indentStr}↔️  ${inT + outT} tokens (${inT} in · ${outT} out) · ${sec.toFixed(1)}s · ${tps} tok/s`));
-    }
+    showStats(response, t1, currentIndent);
   }
 
   if (response.text) {
     if (!response._streamRendered) {
-      console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0) + "\n");
+      console.log(renderMarkdown(response.text, true, hasPromptedDestructive ? 4 : 0));
+      flushStats();
+      console.log();
     } else {
       console.log();
     }
