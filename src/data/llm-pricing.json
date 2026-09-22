@@ -14516,6 +14516,7 @@
         "source": "https://docs.anthropic.com/en/docs/about-claude/pricing"
     },
     "claude-sonnet-5": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 2.5e-06,
         "cache_creation_input_token_cost_above_1hr": 4e-06,
         "cache_read_input_token_cost": 2e-07,
@@ -14555,6 +14556,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-sonnet-4-6": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 3.75e-06,
         "cache_creation_input_token_cost_above_1hr": 6e-06,
         "cache_read_input_token_cost": 3e-07,
@@ -14770,6 +14772,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-opus-4-6": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -14808,6 +14811,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-opus-4-6-20260205": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -14845,6 +14849,7 @@
         "prompt_cache_min_tokens": 4096
     },
     "claude-opus-4-7": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -14884,6 +14889,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-opus-4-7-20260416": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -14922,6 +14928,7 @@
         "prompt_cache_min_tokens": 2048
     },
     "claude-fable-5": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 1.25e-05,
         "cache_creation_input_token_cost_above_1hr": 2e-05,
         "cache_read_input_token_cost": 1e-06,
@@ -14961,6 +14968,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-fable-5-1": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 1.25e-05,
         "cache_creation_input_token_cost_above_1hr": 2e-05,
         "cache_read_input_token_cost": 2.5e-07,
@@ -15001,6 +15009,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-opus-5": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -15043,6 +15052,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-opus-4-8": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 6.25e-06,
         "cache_creation_input_token_cost_above_1hr": 1e-05,
         "cache_read_input_token_cost": 5e-07,
@@ -24965,6 +24975,27 @@
         "supported_endpoints": [
             "/v1/images/generations"
         ]
+    },
+    "fal_ai/fal-ai/trellis": {
+        "litellm_provider": "fal_ai",
+        "mode": "image_generation",
+        "output_cost_per_image": 0.02,
+        "source": "https://fal.ai/models/fal-ai/trellis",
+        "metadata": {
+            "comment": "image-to-3D, returns a GLB mesh; served through the /fal_ai pass-through route"
+        }
+    },
+    "fal_ai/fal-ai/trellis-2": {
+        "litellm_provider": "fal_ai",
+        "mode": "image_generation",
+        "output_cost_per_image": 0.3,
+        "output_cost_per_image_512": 0.25,
+        "output_cost_per_image_1024": 0.3,
+        "output_cost_per_image_1536": 0.35,
+        "source": "https://fal.ai/models/fal-ai/trellis-2",
+        "metadata": {
+            "comment": "image-to-3D, returns a GLB mesh; priced by the request's resolution field (default 1024); served through the /fal_ai pass-through route"
+        }
     },
     "fal_ai/fal-ai/flux-lora-depth": {
         "litellm_provider": "fal_ai",
@@ -43062,21 +43093,21 @@
         "supports_web_search": false
     },
     "openrouter/deepseek/deepseek-v4-pro": {
-        "input_cost_per_token": 9.5526e-07,
+        "input_cost_per_token": 9.36294e-07,
         "input_cost_per_token_cache_hit": 4.4e-08,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1048576,
         "max_output_tokens": 384000,
         "max_tokens": 384000,
         "mode": "chat",
-        "output_cost_per_token": 1.91052e-06,
+        "output_cost_per_token": 1.872588e-06,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_function_calling": true,
         "supports_prompt_caching": true,
         "supports_reasoning": true,
         "supports_response_schema": true,
         "supports_tool_choice": true,
-        "cache_read_input_token_cost": 7.9605e-08,
+        "cache_read_input_token_cost": 7.80245e-08,
         "supports_audio_input": false,
         "supports_pdf_input": false,
         "supports_vision": false,
@@ -44203,19 +44234,19 @@
     },
     "openrouter/openai/gpt-oss-20b": {
         "cache_read_input_token_cost": 3e-08,
-        "input_cost_per_token": 3e-08,
+        "input_cost_per_token": 1.8e-08,
         "litellm_provider": "openrouter",
         "max_input_tokens": 131072,
-        "max_output_tokens": 117964,
-        "max_tokens": 117964,
+        "max_output_tokens": 32768,
+        "max_tokens": 32768,
         "mode": "chat",
-        "output_cost_per_token": 1.3e-07,
+        "output_cost_per_token": 9e-08,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
         "supports_function_calling": true,
         "supports_parallel_function_calling": true,
         "supports_pdf_input": false,
-        "supports_prompt_caching": true,
+        "supports_prompt_caching": false,
         "supports_reasoning": true,
         "supports_response_schema": true,
         "supports_tool_choice": true,
@@ -62127,6 +62158,7 @@
         "supports_audio_output": true
     },
     "claude-mythos-5": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 1.25e-05,
         "cache_creation_input_token_cost_above_1hr": 2e-05,
         "cache_read_input_token_cost": 1e-06,
@@ -62166,6 +62198,7 @@
         }
     },
     "claude-mythos-5-1": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 1.25e-05,
         "cache_creation_input_token_cost_above_1hr": 2e-05,
         "cache_read_input_token_cost": 2.5e-07,
@@ -62206,6 +62239,7 @@
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
     "claude-mythos-preview": {
+        "supports_anthropic_compaction": true,
         "cache_creation_input_token_cost": 1.25e-05,
         "cache_creation_input_token_cost_above_1hr": 2e-05,
         "cache_read_input_token_cost": 1e-06,
@@ -68281,9 +68315,9 @@
         "supports_web_search": false
     },
     "openrouter/z-ai/glm-5.3": {
-        "input_cost_per_token": 8.4e-07,
-        "output_cost_per_token": 2.64e-06,
-        "cache_read_input_token_cost": 1.56e-07,
+        "input_cost_per_token": 6.538e-07,
+        "output_cost_per_token": 2.0548e-06,
+        "cache_read_input_token_cost": 1.2142e-07,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1310720,
         "max_output_tokens": 131072,
@@ -68649,7 +68683,7 @@
     },
     "openrouter/moonshotai/kimi-k2.7-code": {
         "input_cost_per_token": 7.062e-07,
-        "output_cost_per_token": 3.21e-06,
+        "output_cost_per_token": 3.3e-06,
         "cache_read_input_token_cost": 1.8e-07,
         "litellm_provider": "openrouter",
         "max_input_tokens": 262144,
@@ -68970,9 +69004,9 @@
         "supports_web_search": true
     },
     "openrouter/deepseek/deepseek-v4-flash": {
-        "input_cost_per_token": 8.8606e-08,
-        "output_cost_per_token": 1.77212e-07,
-        "cache_read_input_token_cost": 1.77212e-08,
+        "input_cost_per_token": 4.9e-08,
+        "output_cost_per_token": 9.8e-08,
+        "cache_read_input_token_cost": 9.8e-09,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1048576,
         "max_output_tokens": 384000,
@@ -69832,8 +69866,8 @@
         "output_cost_per_token": 1.2e-06,
         "litellm_provider": "openrouter",
         "max_input_tokens": 262144,
-        "max_output_tokens": 32768,
-        "max_tokens": 32768,
+        "max_output_tokens": 235929,
+        "max_tokens": 235929,
         "mode": "chat",
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
@@ -72883,6 +72917,16 @@
         "supports_reasoning": true,
         "supports_vision": true
     },
+    "openrouter/typesafe/jev-1.13": {
+        "input_cost_per_token": 4.2e-08,
+        "litellm_provider": "openrouter",
+        "max_input_tokens": 32000,
+        "max_output_tokens": 28800,
+        "max_tokens": 28800,
+        "mode": "evaluation",
+        "output_cost_per_token": 0.0,
+        "source": "https://openrouter.ai/typesafe/jev-1.13"
+    },
     "typesafe/jev-1.13.0": {
         "input_cost_per_token": 4.2e-08,
         "litellm_provider": "typesafe",
@@ -73301,14 +73345,14 @@
         "supports_web_search": false
     },
     "openrouter/~z-ai/glm-latest": {
-        "cache_read_input_token_cost": 1.56e-07,
-        "input_cost_per_token": 8.4e-07,
+        "cache_read_input_token_cost": 1.2142e-07,
+        "input_cost_per_token": 6.538e-07,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1310720,
         "max_output_tokens": 131072,
         "max_tokens": 131072,
         "mode": "chat",
-        "output_cost_per_token": 2.64e-06,
+        "output_cost_per_token": 2.0548e-06,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
         "supports_function_calling": true,
@@ -73324,7 +73368,7 @@
         "cache_read_input_token_cost": 2e-07,
         "input_cost_per_token": 8e-07,
         "litellm_provider": "openrouter",
-        "max_input_tokens": 131072,
+        "max_input_tokens": 1048576,
         "max_output_tokens": 32768,
         "max_tokens": 32768,
         "mode": "chat",
@@ -73344,7 +73388,7 @@
         "cache_read_input_token_cost": 7.5e-07,
         "input_cost_per_token": 3e-06,
         "litellm_provider": "openrouter",
-        "max_input_tokens": 131072,
+        "max_input_tokens": 1048576,
         "max_output_tokens": 32768,
         "max_tokens": 32768,
         "mode": "chat",
@@ -73364,7 +73408,7 @@
         "cache_read_input_token_cost": 1.8e-07,
         "input_cost_per_token": 7e-07,
         "litellm_provider": "openrouter",
-        "max_input_tokens": 131072,
+        "max_input_tokens": 1048576,
         "max_output_tokens": 32768,
         "max_tokens": 32768,
         "mode": "chat",
@@ -74143,7 +74187,7 @@
         "supports_web_search": false
     },
     "openrouter/dots-studio/dots-3-note-preview:free": {
-        "deprecation_date": "2026-09-30",
+        "deprecation_date": "2026-12-31",
         "input_cost_per_token": 0.0,
         "litellm_provider": "openrouter",
         "max_input_tokens": 512000,
@@ -75054,14 +75098,14 @@
         "supports_web_search": false
     },
     "openrouter/moonshotai/kimi-k3:batch": {
-        "cache_read_input_token_cost": 3e-07,
-        "input_cost_per_token": 3e-06,
+        "cache_read_input_token_cost": 2.28e-07,
+        "input_cost_per_token": 2.28e-06,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1048576,
-        "max_output_tokens": 943718,
-        "max_tokens": 943718,
+        "max_output_tokens": 16384,
+        "max_tokens": 16384,
         "mode": "chat",
-        "output_cost_per_token": 1.5e-05,
+        "output_cost_per_token": 1.14e-05,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
         "supports_function_calling": true,
@@ -75112,6 +75156,7 @@
         "supports_web_search": false
     },
     "openrouter/nex-agi/nex-n2.5-mini:free": {
+        "deprecation_date": "2026-09-25",
         "input_cost_per_token": 0.0,
         "litellm_provider": "openrouter",
         "max_input_tokens": 262144,
@@ -75131,6 +75176,7 @@
         "supports_web_search": false
     },
     "openrouter/nex-agi/nex-n2.5-pro:free": {
+        "deprecation_date": "2026-09-25",
         "input_cost_per_token": 0.0,
         "litellm_provider": "openrouter",
         "max_input_tokens": 262144,
@@ -76807,14 +76853,14 @@
         "supports_web_search": false
     },
     "openrouter/z-ai/glm-5.3-flash:batch": {
-        "cache_read_input_token_cost": 1.5e-08,
-        "input_cost_per_token": 7.5e-08,
+        "cache_read_input_token_cost": 1.2e-08,
+        "input_cost_per_token": 6e-08,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1048576,
-        "max_output_tokens": 943718,
-        "max_tokens": 943718,
+        "max_output_tokens": 131072,
+        "max_tokens": 131072,
         "mode": "chat",
-        "output_cost_per_token": 2.5e-07,
+        "output_cost_per_token": 2e-07,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
         "supports_function_calling": true,
@@ -76827,14 +76873,14 @@
         "supports_web_search": false
     },
     "openrouter/z-ai/glm-5.3:batch": {
-        "cache_read_input_token_cost": 1.3e-07,
-        "input_cost_per_token": 7e-07,
+        "cache_read_input_token_cost": 1.2e-07,
+        "input_cost_per_token": 7.2e-07,
         "litellm_provider": "openrouter",
         "max_input_tokens": 1048576,
-        "max_output_tokens": 943718,
-        "max_tokens": 943718,
+        "max_output_tokens": 131072,
+        "max_tokens": 131072,
         "mode": "chat",
-        "output_cost_per_token": 2.2e-06,
+        "output_cost_per_token": 2.4e-06,
         "source": "https://openrouter.ai/api/v1/models",
         "supports_audio_input": false,
         "supports_function_calling": true,
@@ -77495,5 +77541,45 @@
         "input_cost_per_image_token": 1.25e-06,
         "supports_prompt_caching": true,
         "supports_response_schema": true
+    },
+    "openrouter/nex-agi/nex-n2.5-mini": {
+        "cache_read_input_token_cost": 2.5e-09,
+        "input_cost_per_token": 2.5e-08,
+        "litellm_provider": "openrouter",
+        "max_input_tokens": 262144,
+        "max_output_tokens": 235929,
+        "max_tokens": 235929,
+        "mode": "chat",
+        "output_cost_per_token": 1e-07,
+        "source": "https://openrouter.ai/api/v1/models",
+        "supports_audio_input": false,
+        "supports_function_calling": false,
+        "supports_pdf_input": false,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_tool_choice": false,
+        "supports_vision": true,
+        "supports_web_search": false
+    },
+    "openrouter/nex-agi/nex-n2.5-pro": {
+        "cache_read_input_token_cost": 1.5e-08,
+        "input_cost_per_token": 7.5e-08,
+        "litellm_provider": "openrouter",
+        "max_input_tokens": 262144,
+        "max_output_tokens": 235929,
+        "max_tokens": 235929,
+        "mode": "chat",
+        "output_cost_per_token": 2.5e-07,
+        "source": "https://openrouter.ai/api/v1/models",
+        "supports_audio_input": false,
+        "supports_function_calling": true,
+        "supports_pdf_input": false,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_web_search": false
     }
 }
