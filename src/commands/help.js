@@ -36,7 +36,7 @@ export function helpCommand() {
     `    ${chalk.cyan("portscope kill <n>")}       Kill by port, PID, or range`,
   );
   console.log(
-    `    ${chalk.cyan("portscope kill 3k,5k,8k")}  Kill comma-separated ports`,
+    `    ${chalk.cyan("portscope kill 3000,5173")} Kill comma-separated ports`,
   );
   console.log(
     `    ${chalk.cyan("portscope kill all")}       Kill all dev server ports`,
