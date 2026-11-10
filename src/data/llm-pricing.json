@@ -3965,6 +3965,7 @@
         "supports_vision": true,
         "supports_output_config": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 4096
     },
     "azure_ai/claude-opus-4-7": {
@@ -3997,6 +3998,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 2048
     },
     "azure_ai/claude-fable-5": {
@@ -4031,6 +4033,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": false,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 512
     },
     "azure_ai/claude-fable-5-1": {
@@ -4065,6 +4068,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": false,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 512,
         "deprecation_date": "2027-12-05",
         "deprecation_source": "https://learn.microsoft.com/en-us/azure/foundry/concepts/model-lifecycle-retirement"
@@ -4136,6 +4140,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 512
     },
     "azure_ai/claude-opus-5-5": {
@@ -4171,6 +4176,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 512,
         "source": "https://management.azure.com/subscriptions/c873328e-b572-4770-8dff-aaeb6f1f0e79/providers/Microsoft.CognitiveServices/locations/eastus2/models?api-version=2024-10-01"
     },
@@ -4208,6 +4214,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 1024
     },
     "azure_ai/claude-sonnet-4-5": {
@@ -4267,6 +4274,7 @@
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
+        "supports_web_search": true,
         "prompt_cache_min_tokens": 1024
     },
     "azure_ai/claude-sonnet-4-6": {
@@ -29393,7 +29401,8 @@
         "supports_video_input": false,
         "mode": "chat",
         "comment": "Strong GLM coding model for agentic engineering, terminals, and repository generation",
-        "source": "https://api.friendli.ai/serverless/v1/models"
+        "source": "https://api.friendli.ai/serverless/v1/models",
+        "deprecation_date": "2026-11-20"
     },
     "ft:babbage-002": {
         "deprecation_date": "2026-09-28",
@@ -42601,6 +42610,52 @@
         "supports_function_calling": true,
         "supports_tool_choice": false
     },
+        "meta/muse-ember-1.0": {
+            "cache_read_input_token_cost": 4e-09,
+            "cache_read_input_token_cost_above_200k_tokens": 1.2e-08,
+            "input_cost_per_token": 1e-07,
+            "input_cost_per_token_above_200k_tokens": 3e-07,
+            "litellm_provider": "meta",
+            "max_input_tokens": 1048576,
+            "max_output_tokens": 524288,
+            "mode": "chat",
+            "output_cost_per_token": 5e-07,
+            "output_cost_per_token_above_200k_tokens": 1.5e-06,
+            "search_context_cost_per_query": {
+                "search_context_size_high": 0.0025,
+                "search_context_size_low": 0.0025,
+                "search_context_size_medium": 0.0025
+            },
+            "source": "https://dev.meta.ai/docs/pricing-rate-limits",
+            "supported_endpoints": [
+                "/v1/chat/completions",
+                "/v1/responses",
+                "/v1/messages"
+            ],
+            "supported_modalities": [
+                "text",
+                "image",
+                "video",
+                "audio"
+            ],
+            "supported_output_modalities": [
+                "text"
+            ],
+            "supports_function_calling": true,
+            "supports_max_reasoning_effort": true,
+            "supports_minimal_reasoning_effort": true,
+            "supports_none_reasoning_effort": false,
+            "supports_parallel_function_calling": true,
+            "supports_pdf_input": true,
+            "supports_prompt_caching": true,
+            "supports_reasoning": true,
+            "supports_response_schema": true,
+            "supports_system_messages": true,
+            "supports_tool_choice": true,
+            "supports_vision": true,
+            "supports_web_search": true,
+            "supports_xhigh_reasoning_effort": true
+        },
     "meta/muse-spark-1.1": {
         "cache_read_input_token_cost": 1.5e-07,
         "input_cost_per_token": 1.25e-06,
@@ -53189,6 +53244,47 @@
         "output_cost_per_token_batches": 2e-05,
         "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing"
     },
+    "vertex_ai/claude-mythos-5-2": {
+        "regional_endpoint_uplift_multiplier": 1.1,
+        "supports_mid_conversation_system": true,
+        "cache_creation_input_token_cost": 1e-05,
+        "cache_creation_input_token_cost_above_1hr": 1.6e-05,
+        "cache_creation_input_token_cost_batches": 5e-06,
+        "cache_read_input_token_cost": 2e-07,
+        "cache_read_input_token_cost_batches": 1e-07,
+        "input_cost_per_token": 8e-06,
+        "litellm_provider": "vertex_ai-anthropic_models",
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 128000,
+        "mode": "chat",
+        "output_cost_per_token": 4e-05,
+        "search_context_cost_per_query": {
+            "search_context_size_high": 0.01,
+            "search_context_size_low": 0.01,
+            "search_context_size_medium": 0.01
+        },
+        "supports_adaptive_thinking": true,
+        "thinking_always_on": true,
+        "supports_assistant_prefill": false,
+        "supports_computer_use": true,
+        "supports_forced_tool_use": false,
+        "supports_function_calling": true,
+        "supports_native_structured_output": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_sampling_params": false,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_xhigh_reasoning_effort": true,
+        "supports_max_reasoning_effort": true,
+        "prompt_cache_min_tokens": 512,
+        "deprecation_date": "2027-11-09",
+        "input_cost_per_token_batches": 4e-06,
+        "output_cost_per_token_batches": 2e-05,
+        "source": "https://platform.claude.com/docs/en/models/mythos-5-2/overview"
+    },
     "vertex_ai/claude-fable-latest": {
         "alias_of": "vertex_ai/claude-fable-5-2"
     },
@@ -53312,6 +53408,47 @@
         "input_cost_per_token_batches": 4e-06,
         "output_cost_per_token_batches": 2e-05,
         "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing"
+    },
+    "vertex_ai/claude-mythos-5-2@default": {
+        "regional_endpoint_uplift_multiplier": 1.1,
+        "supports_mid_conversation_system": true,
+        "cache_creation_input_token_cost": 1e-05,
+        "cache_creation_input_token_cost_above_1hr": 1.6e-05,
+        "cache_creation_input_token_cost_batches": 5e-06,
+        "cache_read_input_token_cost": 2e-07,
+        "cache_read_input_token_cost_batches": 1e-07,
+        "input_cost_per_token": 8e-06,
+        "litellm_provider": "vertex_ai-anthropic_models",
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 128000,
+        "mode": "chat",
+        "output_cost_per_token": 4e-05,
+        "search_context_cost_per_query": {
+            "search_context_size_high": 0.01,
+            "search_context_size_low": 0.01,
+            "search_context_size_medium": 0.01
+        },
+        "supports_adaptive_thinking": true,
+        "thinking_always_on": true,
+        "supports_assistant_prefill": false,
+        "supports_computer_use": true,
+        "supports_forced_tool_use": false,
+        "supports_function_calling": true,
+        "supports_native_structured_output": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_sampling_params": false,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_xhigh_reasoning_effort": true,
+        "supports_max_reasoning_effort": true,
+        "prompt_cache_min_tokens": 512,
+        "deprecation_date": "2027-11-09",
+        "input_cost_per_token_batches": 4e-06,
+        "output_cost_per_token_batches": 2e-05,
+        "source": "https://platform.claude.com/docs/en/models/mythos-5-2/overview"
     },
     "vertex_ai/claude-opus-5": {
         "deprecation_date": "2027-01-24",
@@ -64958,6 +65095,53 @@
         "supports_native_structured_output": true,
         "source": "https://platform.claude.com/docs/en/about-claude/pricing"
     },
+    "claude-mythos-5-2": {
+        "supports_anthropic_compaction": true,
+        "cache_creation_input_token_cost": 1e-05,
+        "cache_creation_input_token_cost_above_1hr": 1.6e-05,
+        "cache_creation_input_token_cost_batches": 5e-06,
+        "cache_read_input_token_cost": 2e-07,
+        "cache_read_input_token_cost_batches": 1e-07,
+        "input_cost_per_token": 8e-06,
+        "input_cost_per_token_batches": 4e-06,
+        "litellm_provider": "anthropic",
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 128000,
+        "mode": "chat",
+        "output_cost_per_token": 4e-05,
+        "output_cost_per_token_batches": 2e-05,
+        "search_context_cost_per_query": {
+            "search_context_size_high": 0.01,
+            "search_context_size_low": 0.01,
+            "search_context_size_medium": 0.01
+        },
+        "supports_adaptive_thinking": true,
+        "thinking_always_on": true,
+        "supports_mid_conversation_system": true,
+        "supports_assistant_prefill": false,
+        "supports_computer_use": true,
+        "supports_forced_tool_use": false,
+        "supports_function_calling": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_sampling_params": false,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_xhigh_reasoning_effort": true,
+        "supports_max_reasoning_effort": true,
+        "provider_specific_entry": {
+            "fast": 2,
+            "us": 1.1
+        },
+        "supports_output_config": true,
+        "prompt_cache_min_tokens": 512,
+        "supports_native_structured_output": true,
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "supports_fast_mode": true,
+        "supports_speed": true
+    },
     "claude-mythos-preview": {
         "deprecation_date": "2026-06-09",
         "deprecation_source": "https://platform.claude.com/docs/en/about-claude/model-deprecations",
@@ -69965,6 +70149,7 @@
         }
     },
     "bedrock/us-gov-west-1/anthropic.claude-fable-5-2": {
+        "bedrock_output_config_effort_ceiling": "xhigh",
         "cache_creation_input_token_cost": 1.2e-05,
         "cache_creation_input_token_cost_above_1hr": 1.92e-05,
         "cache_read_input_token_cost": 2.4e-07,
@@ -69974,13 +70159,19 @@
         "max_output_tokens": 128000,
         "mode": "chat",
         "output_cost_per_token": 4.8e-05,
+        "prompt_cache_min_tokens": 512.0,
+        "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/current/index.json",
         "supports_adaptive_thinking": true,
-        "thinking_always_on": true,
-        "supports_mid_conversation_system": true,
         "supports_assistant_prefill": false,
+        "supports_bedrock_native_structured_output": false,
         "supports_computer_use": true,
         "supports_forced_tool_use": false,
         "supports_function_calling": true,
+        "supports_max_reasoning_effort": true,
+        "supports_mid_conversation_system": true,
+        "supports_native_structured_output": false,
+        "supports_output_config": true,
+        "supports_parallel_tool_use_config": true,
         "supports_pdf_input": true,
         "supports_prompt_caching": true,
         "supports_reasoning": true,
@@ -69989,18 +70180,7 @@
         "supports_tool_choice": true,
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
-        "supports_native_structured_output": false,
-        "supports_bedrock_native_structured_output": false,
-        "supports_max_reasoning_effort": true,
-        "supports_output_config": true,
-        "bedrock_output_config_effort_ceiling": "xhigh",
-        "supports_parallel_tool_use_config": true,
-        "prompt_cache_min_tokens": 512,
-        "token_count_model": {
-            "model": "anthropic.claude-fable-5-2",
-            "litellm_provider": "bedrock_mantle",
-            "region": "us-gov-west-1"
-        }
+        "thinking_always_on": true
     },
     "bedrock/us-gov-east-1/nvidia.nemotron-nano-3-30b": {
         "input_cost_per_token": 7.2e-08,
@@ -70311,6 +70491,7 @@
         "prompt_cache_min_tokens": 512
     },
     "bedrock/us-gov-east-1/anthropic.claude-fable-5-2": {
+        "bedrock_output_config_effort_ceiling": "xhigh",
         "cache_creation_input_token_cost": 1.2e-05,
         "cache_creation_input_token_cost_above_1hr": 1.92e-05,
         "cache_read_input_token_cost": 2.4e-07,
@@ -70320,13 +70501,19 @@
         "max_output_tokens": 128000,
         "mode": "chat",
         "output_cost_per_token": 4.8e-05,
+        "prompt_cache_min_tokens": 512.0,
+        "source": "https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/current/index.json",
         "supports_adaptive_thinking": true,
-        "thinking_always_on": true,
-        "supports_mid_conversation_system": true,
         "supports_assistant_prefill": false,
+        "supports_bedrock_native_structured_output": false,
         "supports_computer_use": true,
         "supports_forced_tool_use": false,
         "supports_function_calling": true,
+        "supports_max_reasoning_effort": true,
+        "supports_mid_conversation_system": true,
+        "supports_native_structured_output": false,
+        "supports_output_config": true,
+        "supports_parallel_tool_use_config": true,
         "supports_pdf_input": true,
         "supports_prompt_caching": true,
         "supports_reasoning": true,
@@ -70335,13 +70522,7 @@
         "supports_tool_choice": true,
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
-        "supports_native_structured_output": false,
-        "supports_bedrock_native_structured_output": false,
-        "supports_max_reasoning_effort": true,
-        "supports_output_config": true,
-        "bedrock_output_config_effort_ceiling": "xhigh",
-        "supports_parallel_tool_use_config": true,
-        "prompt_cache_min_tokens": 512
+        "thinking_always_on": true
     },
     "bedrock_mantle/us-gov-west-1/openai.gpt-5.6-terra": {
         "litellm_provider": "bedrock_mantle",
@@ -72343,6 +72524,7 @@
         "source": "https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20'Foundry%20Models'%20and%20armRegionName%20eq%20'eastus'%20and%20priceType%20eq%20'Consumption'"
     },
     "azure/eu/gpt-5.4-mini": {
+        "default_reasoning_effort": "none",
         "deprecation_date": "2027-09-21",
         "deprecation_source": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule",
         "cache_read_input_token_cost": 8.25e-08,
@@ -72364,6 +72546,7 @@
         "source": "https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20'Foundry%20Models'%20and%20armRegionName%20eq%20'eastus'%20and%20priceType%20eq%20'Consumption'"
     },
     "azure/eu/gpt-5.4-nano": {
+        "default_reasoning_effort": "none",
         "deprecation_date": "2027-09-21",
         "deprecation_source": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule",
         "cache_read_input_token_cost": 2.2e-08,
@@ -72967,6 +73150,7 @@
         "source": "https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20'Foundry%20Models'%20and%20armRegionName%20eq%20'eastus'%20and%20priceType%20eq%20'Consumption'"
     },
     "azure/us/gpt-5.4-mini": {
+        "default_reasoning_effort": "none",
         "deprecation_date": "2027-09-21",
         "deprecation_source": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule",
         "cache_read_input_token_cost": 8.25e-08,
@@ -72988,6 +73172,7 @@
         "source": "https://prices.azure.com/api/retail/prices?$filter=serviceName%20eq%20'Foundry%20Models'%20and%20armRegionName%20eq%20'eastus'%20and%20priceType%20eq%20'Consumption'"
     },
     "azure/us/gpt-5.4-nano": {
+        "default_reasoning_effort": "none",
         "deprecation_date": "2027-09-21",
         "deprecation_source": "https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule",
         "cache_read_input_token_cost": 2.2e-08,
@@ -76460,6 +76645,7 @@
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
         "supports_forced_tool_use": false,
+        "supports_web_search": true,
         "thinking_always_on": true,
         "prompt_cache_min_tokens": 512,
         "source": "https://management.azure.com/subscriptions/c873328e-b572-4770-8dff-aaeb6f1f0e79/providers/Microsoft.CognitiveServices/locations/eastus2/models?api-version=2024-10-01"
@@ -78031,6 +78217,7 @@
         "supports_xhigh_reasoning_effort": true,
         "supports_max_reasoning_effort": true,
         "supports_forced_tool_use": true,
+        "supports_web_search": true,
         "thinking_always_on": false,
         "prompt_cache_min_tokens": 512,
         "source": "https://platform.claude.com/docs/en/models/haiku-5-5/migration-guide"
@@ -78737,6 +78924,7 @@
         "prompt_cache_min_tokens": 4096.0,
         "rpm": 2000.0,
         "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
         "source": "https://ai.google.dev/gemini-api/docs/pricing",
         "supported_endpoints": [
             "/v1/chat/completions",
@@ -78797,6 +78985,7 @@
         "prompt_cache_min_tokens": 6144.0,
         "regional_endpoint_uplift_multiplier": 1.1,
         "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
         "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
         "supported_endpoints": [
             "/v1/chat/completions",
@@ -78856,6 +79045,7 @@
         "prompt_cache_min_tokens": 6144.0,
         "regional_endpoint_uplift_multiplier": 1.1,
         "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
         "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
         "supported_endpoints": [
             "/v1/chat/completions",
@@ -79097,6 +79287,7 @@
         "supports_tool_choice": true,
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
+        "supports_web_search": true,
         "thinking_always_on": true
     },
     "baseten/meta-models/muse-spark-open": {
@@ -87921,6 +88112,78 @@
         "supports_xhigh_reasoning_effort": true,
         "thinking_always_on": true
     },
+    "azure_ai/claude-mythos-5-2": {
+        "cache_creation_input_token_cost": 1e-05,
+        "cache_creation_input_token_cost_above_1hr": 1.6e-05,
+        "cache_read_input_token_cost": 2e-07,
+        "input_cost_per_token": 8e-06,
+        "litellm_provider": "azure_ai",
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 128000,
+        "mode": "chat",
+        "output_cost_per_token": 4e-05,
+        "prompt_cache_min_tokens": 512.0,
+        "search_context_cost_per_query": {
+            "search_context_size_high": 0.01,
+            "search_context_size_low": 0.01,
+            "search_context_size_medium": 0.01
+        },
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "supports_adaptive_thinking": true,
+        "supports_assistant_prefill": false,
+        "supports_computer_use": true,
+        "supports_forced_tool_use": false,
+        "supports_function_calling": true,
+        "supports_max_reasoning_effort": false,
+        "supports_mid_conversation_system": true,
+        "supports_native_structured_output": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_sampling_params": false,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_xhigh_reasoning_effort": true,
+        "supports_web_search": true,
+        "thinking_always_on": true
+    },
+    "azure_ai/claude-mythos-5-2-fast": {
+        "cache_creation_input_token_cost": 2e-05,
+        "cache_creation_input_token_cost_above_1hr": 3.2e-05,
+        "cache_read_input_token_cost": 4e-07,
+        "input_cost_per_token": 1.6e-05,
+        "litellm_provider": "azure_ai",
+        "max_input_tokens": 1000000,
+        "max_output_tokens": 128000,
+        "mode": "chat",
+        "output_cost_per_token": 8e-05,
+        "prompt_cache_min_tokens": 512.0,
+        "search_context_cost_per_query": {
+            "search_context_size_high": 0.01,
+            "search_context_size_low": 0.01,
+            "search_context_size_medium": 0.01
+        },
+        "source": "https://platform.claude.com/docs/en/about-claude/pricing",
+        "supports_adaptive_thinking": true,
+        "supports_assistant_prefill": false,
+        "supports_computer_use": true,
+        "supports_forced_tool_use": false,
+        "supports_function_calling": true,
+        "supports_max_reasoning_effort": false,
+        "supports_mid_conversation_system": true,
+        "supports_native_structured_output": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_sampling_params": false,
+        "supports_tool_choice": true,
+        "supports_vision": true,
+        "supports_xhigh_reasoning_effort": true,
+        "supports_web_search": true,
+        "thinking_always_on": true
+    },
     "azure_ai/claude-fable-5-2": {
         "cache_creation_input_token_cost": 1e-05,
         "cache_creation_input_token_cost_above_1hr": 1.6e-05,
@@ -87950,6 +88213,7 @@
         "supports_tool_choice": true,
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
+        "supports_web_search": true,
         "thinking_always_on": true
     },
     "azure_ai/claude-fable-5-2-fast": {
@@ -87981,6 +88245,7 @@
         "supports_tool_choice": true,
         "supports_vision": true,
         "supports_xhigh_reasoning_effort": true,
+        "supports_web_search": true,
         "thinking_always_on": true
     },
     "bedrock/us-gov-east-1/anthropic.claude-mythos-5-2": {
@@ -88085,5 +88350,177 @@
         "supports_prompt_caching": true,
         "supports_reasoning": true,
         "supports_vision": true
+    },
+    "gemini/gemini-4-carbon": {
+        "cache_read_input_token_cost": 1e-07,
+        "cache_read_input_token_cost_batches": 5e-08,
+        "cache_read_input_token_cost_flex": 5e-08,
+        "cache_read_input_token_cost_priority": 1.8e-07,
+        "google_maps_grounding_cost_per_query": 0.014,
+        "input_cost_per_token": 2e-06,
+        "input_cost_per_token_batches": 1e-06,
+        "input_cost_per_token_flex": 1e-06,
+        "input_cost_per_token_priority": 3.6e-06,
+        "litellm_provider": "gemini",
+        "max_input_tokens": 1048576,
+        "max_output_tokens": 1048576,
+        "mode": "chat",
+        "output_cost_per_reasoning_token": 1e-05,
+        "output_cost_per_token": 1e-05,
+        "output_cost_per_token_batches": 5e-06,
+        "output_cost_per_token_flex": 5e-06,
+        "output_cost_per_token_priority": 1.8e-05,
+        "prompt_cache_min_tokens": 4096.0,
+        "rpm": 2000.0,
+        "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
+        "source": "https://aistudio.google.com/docs/pricing#gemini-4-carbon",
+        "supported_endpoints": [
+            "/v1/chat/completions",
+            "/v1/completions"
+        ],
+        "supported_modalities": [
+            "text",
+            "image",
+            "audio",
+            "video"
+        ],
+        "supported_output_modalities": [
+            "text"
+        ],
+        "supports_audio_input": true,
+        "supports_audio_output": false,
+        "supports_computer_use": true,
+        "supports_continuation": true,
+        "supports_function_calling": true,
+        "supports_minimal_reasoning_effort": false,
+        "supports_native_streaming": true,
+        "supports_parallel_function_calling": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_system_messages": true,
+        "supports_tool_choice": true,
+        "supports_url_context": true,
+        "supports_video_input": true,
+        "supports_vision": true,
+        "supports_web_search": true,
+        "tpm": 800000.0,
+        "web_search_billing_unit": "per_query"
+    },
+    "vertex_ai/gemini-4-carbon": {
+        "cache_read_input_token_cost": 1e-07,
+        "cache_read_input_token_cost_batches": 5e-08,
+        "cache_read_input_token_cost_priority": 1.8e-07,
+        "google_maps_grounding_cost_per_query": 0.014,
+        "input_cost_per_audio_token": 2e-06,
+        "input_cost_per_audio_token_batches": 1e-06,
+        "input_cost_per_audio_token_priority": 3.6e-06,
+        "input_cost_per_token": 2e-06,
+        "input_cost_per_token_batches": 1e-06,
+        "input_cost_per_token_priority": 3.6e-06,
+        "litellm_provider": "vertex_ai",
+        "max_input_tokens": 1048576,
+        "max_output_tokens": 1048576,
+        "mode": "chat",
+        "output_cost_per_reasoning_token": 1e-05,
+        "output_cost_per_token": 1e-05,
+        "output_cost_per_token_batches": 5e-06,
+        "output_cost_per_token_priority": 1.8e-05,
+        "prompt_cache_min_tokens": 4096.0,
+        "regional_endpoint_uplift_multiplier": 1.1,
+        "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
+        "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+        "supported_endpoints": [
+            "/v1/chat/completions",
+            "/v1/completions",
+            "/v1/batch"
+        ],
+        "supported_modalities": [
+            "text",
+            "image",
+            "audio",
+            "video"
+        ],
+        "supported_output_modalities": [
+            "text"
+        ],
+        "supports_audio_input": true,
+        "supports_computer_use": true,
+        "supports_continuation": true,
+        "supports_function_calling": true,
+        "supports_minimal_reasoning_effort": false,
+        "supports_native_streaming": true,
+        "supports_parallel_function_calling": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_system_messages": true,
+        "supports_tool_choice": true,
+        "supports_url_context": true,
+        "supports_video_input": true,
+        "supports_vision": true,
+        "supports_web_search": true,
+        "web_search_billing_unit": "per_query"
+    },
+    "vertex_ai/gemini-4-carbon-cyber-permissive": {
+        "cache_read_input_token_cost": 2e-07,
+        "cache_read_input_token_cost_batches": 1e-07,
+        "cache_read_input_token_cost_priority": 3.6e-07,
+        "google_maps_grounding_cost_per_query": 0.014,
+        "input_cost_per_audio_token": 4e-06,
+        "input_cost_per_audio_token_batches": 2e-06,
+        "input_cost_per_audio_token_priority": 7.2e-06,
+        "input_cost_per_token": 4e-06,
+        "input_cost_per_token_batches": 2e-06,
+        "input_cost_per_token_priority": 7.2e-06,
+        "litellm_provider": "vertex_ai",
+        "max_input_tokens": 1048576,
+        "max_output_tokens": 1048576,
+        "mode": "chat",
+        "output_cost_per_reasoning_token": 2e-05,
+        "output_cost_per_token": 2e-05,
+        "output_cost_per_token_batches": 1e-05,
+        "output_cost_per_token_priority": 3.6e-05,
+        "prompt_cache_min_tokens": 4096.0,
+        "regional_endpoint_uplift_multiplier": 1.1,
+        "search_context_cost_per_query": {"search_context_size_low":0.014,"search_context_size_medium":0.014,"search_context_size_high":0.014},
+        "search_free_requests": {"count": 5000, "period": "month", "shared_group": "gemini-3"},
+        "source": "https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing",
+        "supported_endpoints": [
+            "/v1/chat/completions",
+            "/v1/completions",
+            "/v1/batch"
+        ],
+        "supported_modalities": [
+            "text",
+            "image",
+            "audio",
+            "video"
+        ],
+        "supported_output_modalities": [
+            "text"
+        ],
+        "supports_audio_input": true,
+        "supports_computer_use": false,
+        "supports_continuation": true,
+        "supports_function_calling": true,
+        "supports_minimal_reasoning_effort": false,
+        "supports_native_streaming": true,
+        "supports_parallel_function_calling": true,
+        "supports_pdf_input": true,
+        "supports_prompt_caching": true,
+        "supports_reasoning": true,
+        "supports_response_schema": true,
+        "supports_system_messages": true,
+        "supports_tool_choice": true,
+        "supports_url_context": true,
+        "supports_video_input": true,
+        "supports_vision": true,
+        "supports_web_search": true,
+        "web_search_billing_unit": "per_query"
     }
 }
