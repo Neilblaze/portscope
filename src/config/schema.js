@@ -21,7 +21,7 @@ export const PROVIDER_DEFAULTS = {
     label: "Anthropic",
   },
   openai: {
-    model: "gpt-5-nano",
+    model: "gpt-6-luna",
     envKey: "OPENAI_API_KEY",
     baseUrl: "https://api.openai.com/v1/chat/completions",
     modelsUrl: "https://api.openai.com/v1/models",
